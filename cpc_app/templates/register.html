@@ -1,6 +1,6 @@
 <!doctype html>
 {% load static %}
-<html lang="en" dir="rtl">
+<html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,15 +17,28 @@
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="bg-concentric-waves min-h-screen flex items-center justify-center py-10 px-4">
-    <main
-      class="w-full max-w-xl bg-white rounded-2xl shadow-xl p-8 sm:p-10"
-    >
-      <p class="text-center text-3xl font-bold">
-        مرحباً بك في منصه سنتر بونت كونكت
+    <main class="w-full max-w-xl bg-white rounded-2xl shadow-xl p-8 sm:p-10">
+      <p class="text-center text-3xl font-bold text-gray-800">
+        مرحباً بك في منصة سنتر بوينت كونكت
       </p>
-      <p class="text-center text-2xl font-medium">Center Point Connect (CPC)</p>
-      <hr />
-      <p class="mt-5 text-center text-3xl font-bold">انشاء حساب</p>
+      <p class="text-center text-xl font-medium text-gray-600 mt-1">Center Point Connect (CPC)</p>
+      <hr class="my-5 border-gray-200" />
+
+      <!-- Step Indicator -->
+      <div class="mb-6">
+        <div class="flex items-center justify-center space-x-4 space-x-reverse">
+          <div id="step-indicator-1" class="flex items-center space-x-2 space-x-reverse font-semibold text-[#1b313e]">
+            <span class="w-8 h-8 rounded-full bg-[#1b313e] text-white flex items-center justify-center text-sm">1</span>
+            <span class="text-sm sm:text-base">البيانات الشخصية</span>
+          </div>
+          <div class="w-12 h-0.5 bg-gray-300 transition-colors" id="step-divider"></div>
+          <div id="step-indicator-2" class="flex items-center space-x-2 space-x-reverse font-medium text-gray-400">
+            <span class="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-sm">2</span>
+            <span class="text-sm sm:text-base">بيانات الشبكة</span>
+          </div>
+        </div>
+      </div>
+
       {% if messages %}
         <div class="my-4 space-y-2">
           {% for message in messages %}
@@ -36,7 +49,7 @@
         </div>
       {% endif %}
 
-      <form method="post" novalidate class="mt-6 space-y-4">
+      <form method="post" id="registration-form" novalidate class="mt-4 space-y-4">
         {% csrf_token %}
 
         {% if form.non_field_errors %}
@@ -47,82 +60,222 @@
           </div>
         {% endif %}
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- First Name -->
+        <!-- STEP 1: Personal / Client Information -->
+        <div id="step-1-fields" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- First Name -->
+            <div>
+              <label for="{{ form.first_name.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
+                {{ form.first_name.label }} <span class="text-red-500">*</span>
+              </label>
+              {{ form.first_name }}
+              {% if form.first_name.errors %}
+                <div class="mt-1 text-sm text-red-600 space-y-0.5">
+                  {% for error in form.first_name.errors %}
+                    <p>{{ error }}</p>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+
+            <!-- Last Name -->
+            <div>
+              <label for="{{ form.last_name.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
+                {{ form.last_name.label }} <span class="text-red-500">*</span>
+              </label>
+              {{ form.last_name }}
+              {% if form.last_name.errors %}
+                <div class="mt-1 text-sm text-red-600 space-y-0.5">
+                  {% for error in form.last_name.errors %}
+                    <p>{{ error }}</p>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Username -->
           <div>
-            <label for="{{ form.first_name.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
-              {{ form.first_name.label }}
+            <label for="{{ form.username.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
+              {{ form.username.label }} <span class="text-red-500">*</span>
             </label>
-            {{ form.first_name }}
-            {% if form.first_name.errors %}
+            {{ form.username }}
+            {% if form.username.errors %}
               <div class="mt-1 text-sm text-red-600 space-y-0.5">
-                {% for error in form.first_name.errors %}
+                {% for error in form.username.errors %}
                   <p>{{ error }}</p>
                 {% endfor %}
               </div>
             {% endif %}
           </div>
 
-          <!-- Last Name -->
+          <!-- Phone Number -->
           <div>
-            <label for="{{ form.last_name.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
-              {{ form.last_name.label }}
+            <label for="{{ form.phone_number.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
+              {{ form.phone_number.label }} <span class="text-red-500">*</span>
             </label>
-            {{ form.last_name }}
-            {% if form.last_name.errors %}
+            {{ form.phone_number }}
+            {% if form.phone_number.errors %}
               <div class="mt-1 text-sm text-red-600 space-y-0.5">
-                {% for error in form.last_name.errors %}
+                {% for error in form.phone_number.errors %}
                   <p>{{ error }}</p>
                 {% endfor %}
               </div>
             {% endif %}
           </div>
+
+          <!-- Email -->
+          <div>
+            <label for="{{ form.email.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
+              {{ form.email.label }} <span class="text-red-500">*</span>
+            </label>
+            {{ form.email }}
+            {% if form.email.errors %}
+              <div class="mt-1 text-sm text-red-600 space-y-0.5">
+                {% for error in form.email.errors %}
+                  <p>{{ error }}</p>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+
+          <button
+            type="button"
+            id="btn-next-step"
+            class="w-full mt-6 bg-[#1b313e] hover:bg-[#152631] text-white font-semibold py-2.5 px-4 rounded-lg shadow transition-colors duration-200 cursor-pointer"
+          >
+            التالي
+          </button>
         </div>
 
-        <!-- Username -->
-        <div>
-          <label for="{{ form.username.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
-            {{ form.username.label }}
-          </label>
-          {{ form.username }}
-          {% if form.username.errors %}
-            <div class="mt-1 text-sm text-red-600 space-y-0.5">
-              {% for error in form.username.errors %}
-                <p>{{ error }}</p>
-              {% endfor %}
-            </div>
-          {% endif %}
-        </div>
+        <!-- STEP 2: Network Information (Hidden initially) -->
+        <div id="step-2-fields" class="space-y-4 hidden">
+          <!-- Network Name -->
+          <div>
+            <label for="{{ form.network_name.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
+              {{ form.network_name.label }} <span class="text-red-500">*</span>
+            </label>
+            {{ form.network_name }}
+            {% if form.network_name.errors %}
+              <div class="mt-1 text-sm text-red-600 space-y-0.5">
+                {% for error in form.network_name.errors %}
+                  <p>{{ error }}</p>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
 
-        <!-- Email -->
-        <div>
-          <label for="{{ form.email.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
-            {{ form.email.label }}
-          </label>
-          {{ form.email }}
-          {% if form.email.errors %}
-            <div class="mt-1 text-sm text-red-600 space-y-0.5">
-              {% for error in form.email.errors %}
-                <p>{{ error }}</p>
-              {% endfor %}
-            </div>
-          {% endif %}
-        </div>
+          <!-- Assigned Engineer -->
+          <div>
+            <label for="{{ form.assigned_engineer.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
+              {{ form.assigned_engineer.label }}
+            </label>
+            {{ form.assigned_engineer }}
+            {% if form.assigned_engineer.errors %}
+              <div class="mt-1 text-sm text-red-600 space-y-0.5">
+                {% for error in form.assigned_engineer.errors %}
+                  <p>{{ error }}</p>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
 
-        <button
-          type="submit"
-          class="w-full mt-6 bg-[#1b313e] hover:bg-[#152631] text-white font-semibold py-2.5 px-4 rounded-lg shadow transition-colors duration-200 cursor-pointer"
-        >
-          إنشاء حساب
-        </button>
+          <div class="flex items-center gap-3 mt-6">
+            <button
+              type="button"
+              id="btn-prev-step"
+              class="w-1/3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2.5 px-4 rounded-lg shadow-sm transition-colors duration-200 cursor-pointer"
+            >
+              السابق
+            </button>
+            <button
+              type="submit"
+              class="w-2/3 bg-[#1b313e] hover:bg-[#152631] text-white font-semibold py-2.5 px-4 rounded-lg shadow transition-colors duration-200 cursor-pointer"
+            >
+              إنشاء الحساب
+            </button>
+          </div>
+        </div>
 
         <div class="text-center mt-5 pt-1">
           <p class="text-sm text-gray-600">
-            لديك حساب بالفعل !!
+            لديك حساب بالفعل ؟
             <a href="#" class="font-bold text-[#1b313e] hover:underline mr-1 transition-colors">تسجيل الدخول</a>
           </p>
         </div>
       </form>
     </main>
+
+    <script>
+      const step1Fields = document.getElementById('step-1-fields');
+      const step2Fields = document.getElementById('step-2-fields');
+      const btnNext = document.getElementById('btn-next-step');
+      const btnPrev = document.getElementById('btn-prev-step');
+      const stepIndicator1 = document.getElementById('step-indicator-1');
+      const stepIndicator2 = document.getElementById('step-indicator-2');
+      const stepDivider = document.getElementById('step-divider');
+
+      function showStep(step) {
+        if (step === 2) {
+          step1Fields.classList.add('hidden');
+          step2Fields.classList.remove('hidden');
+
+          stepIndicator1.classList.remove('font-semibold', 'text-[#1b313e]');
+          stepIndicator1.classList.add('text-green-600');
+          stepIndicator1.querySelector('span').classList.remove('bg-[#1b313e]');
+          stepIndicator1.querySelector('span').classList.add('bg-green-600');
+          stepIndicator1.querySelector('span').innerHTML = '✓';
+
+          stepIndicator2.classList.remove('text-gray-400', 'font-medium');
+          stepIndicator2.classList.add('text-[#1b313e]', 'font-semibold');
+          stepIndicator2.querySelector('span').classList.remove('bg-gray-200', 'text-gray-600');
+          stepIndicator2.querySelector('span').classList.add('bg-[#1b313e]', 'text-white');
+
+          stepDivider.classList.remove('bg-gray-300');
+          stepDivider.classList.add('bg-green-600');
+        } else {
+          step2Fields.classList.add('hidden');
+          step1Fields.classList.remove('hidden');
+
+          stepIndicator1.classList.add('font-semibold', 'text-[#1b313e]');
+          stepIndicator1.classList.remove('text-green-600');
+          stepIndicator1.querySelector('span').classList.add('bg-[#1b313e]');
+          stepIndicator1.querySelector('span').classList.remove('bg-green-600');
+          stepIndicator1.querySelector('span').innerHTML = '1';
+
+          stepIndicator2.classList.add('text-gray-400', 'font-medium');
+          stepIndicator2.classList.remove('text-[#1b313e]', 'font-semibold');
+          stepIndicator2.querySelector('span').classList.add('bg-gray-200', 'text-gray-600');
+          stepIndicator2.querySelector('span').classList.remove('bg-[#1b313e]', 'text-white');
+
+          stepDivider.classList.add('bg-gray-300');
+          stepDivider.classList.remove('bg-green-600');
+        }
+      }
+
+      btnNext.addEventListener('click', () => {
+        const step1Inputs = step1Fields.querySelectorAll('input');
+        let isValid = true;
+        for (const input of step1Inputs) {
+          if (!input.checkValidity()) {
+            input.reportValidity();
+            isValid = false;
+            break;
+          }
+        }
+        if (isValid) {
+          showStep(2);
+        }
+      });
+
+      btnPrev.addEventListener('click', () => {
+        showStep(1);
+      });
+
+      {% if form.network_name.errors or form.assigned_engineer.errors %}
+        // If there were backend validation errors in step 2, open on step 2
+        showStep(2);
+      {% endif %}
+    </script>
   </body>
 </html>
