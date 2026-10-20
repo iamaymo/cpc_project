@@ -1,6 +1,7 @@
 from django.db import models
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
+from django.contrib.auth.hashers import make_password, check_password
 
 # Create your models here.
 
@@ -10,11 +11,22 @@ class Clients(models.Model):
     last_name = models.CharField(max_length=20)
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=10, unique=True)
-    phone_number = models.CharField(max_length=15)
+    phone_number = models.CharField(max_length=15, null=True, blank=True)
+    password = models.CharField(max_length=128)
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'CLIENTS'
+
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        if not self.password:
+            return False
+        if check_password(raw_password, self.password):
+            return True
+        return self.password == raw_password
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.username})"
@@ -25,11 +37,22 @@ class Engineers(models.Model):
     username = models.CharField(max_length=10, unique=True)
     phone_number = models.CharField(max_length=15)
     email = models.EmailField(unique=True)
+    password = models.CharField(max_length=128)
     joined_at = models.DateTimeField(auto_now_add=True)
     number_of_networks = models.PositiveIntegerField(default=0)
 
     class Meta:
         db_table = 'ENGINEERS'
+
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        if not self.password:
+            return False
+        if check_password(raw_password, self.password):
+            return True
+        return self.password == raw_password
 
     def __str__(self):
         return self.full_name
@@ -37,7 +60,8 @@ class Engineers(models.Model):
 
 class Networks(models.Model):
     network_name = models.CharField(max_length=50)
-    owner = models.ForeignKey(Clients, on_delete=models.CASCADE, related_name='networks')
+    owner = models.ForeignKey(
+        Clients, on_delete=models.CASCADE, related_name='networks')
     assigned_engineer = models.ForeignKey(
         Engineers,
         on_delete=models.SET_NULL,
