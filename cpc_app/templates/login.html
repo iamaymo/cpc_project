@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>تسجيل الدخول</title>
+    <title>تسجيل الدخول - سنتر بوينت كونكت</title>
     <style>
       .bg-concentric-waves {
         background-color: #f8fafc;
@@ -16,21 +16,21 @@
     </style>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body
-    class="bg-concentric-waves min-h-screen flex items-center justify-center py-10 px-4"
-  >
-    <main class="w-full max-w-lg bg-white rounded-2xl shadow-xl p-8 sm:p-10">
-      <p class="text-center text-3xl font-bold text-gray-800">
-        مرحباً بك في منصة سنتر بوينت كونكت
-      </p>
-      <p class="text-center text-xl font-medium text-gray-600 mt-1">
-        Center Point Connect (CPC)
-      </p>
+  <body class="bg-concentric-waves min-h-screen flex items-center justify-center py-10 px-4">
+    <main class="w-full max-w-lg bg-white rounded-2xl shadow-xl p-8 sm:p-10 border border-gray-100">
+      <div class="text-center">
+        <h1 class="text-3xl font-extrabold text-[#1b313e] tracking-tight">
+          سنتر بوينت كونكت
+        </h1>
+        <p class="text-base font-medium text-gray-500 mt-1">
+          النظام الداخلي للمكتب • CPC
+        </p>
+      </div>
       <hr class="my-5 border-gray-200" />
 
-      <h1 class="text-center text-lg font-bold text-[#1b313e] mb-5">
-        تسجيل الدخول إلى حسابك
-      </h1>
+      <h2 class="text-center text-lg font-bold text-gray-800 mb-5">
+        تسجيل الدخول للموظفين
+      </h2>
 
       {% if messages %}
       <div class="my-4 space-y-2">
@@ -42,53 +42,51 @@
         </div>
         {% endfor %}
       </div>
-      {% endif %} {% if logged_in_user %}
+      {% endif %}
+
+      {% if logged_in_user %}
       <!-- Card for currently logged-in user -->
-      <div
-        class="p-5 bg-slate-50 border border-slate-200 rounded-xl mb-6 space-y-3"
-      >
+      <div class="p-5 bg-slate-50 border border-slate-200 rounded-xl mb-6 space-y-3">
         <div class="flex items-center justify-between">
           <span
-            class="text-xs font-semibold px-2.5 py-1 rounded-full {% if user_type == 'engineer' %}bg-purple-100 text-purple-800{% else %}bg-blue-100 text-blue-800{% endif %}"
+            class="text-xs font-semibold px-3 py-1 rounded-full
+              {% if logged_in_user.role == 'ENGINEER' %}bg-purple-100 text-purple-800 border border-purple-200
+              {% elif logged_in_user.role == 'SALES' %}bg-amber-100 text-amber-800 border border-amber-200
+              {% elif logged_in_user.role == 'ADMIN' %}bg-rose-100 text-rose-800 border border-rose-200
+              {% else %}bg-teal-100 text-teal-800 border border-teal-200{% endif %}"
           >
-            {% if user_type == 'engineer' %}
-            مهندس مشرف
-            {% else %}
-            عميل مسجل
-            {% endif %}
+            {{ logged_in_user.get_role_display }}
           </span>
-          <span class="text-xs text-gray-500">حساب نشط</span>
+          <span class="inline-flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            جلسة نشطة
+          </span>
         </div>
 
         <div>
           <p class="text-lg font-bold text-gray-800">
-            {% if logged_in_user.first_name %}{{ logged_in_user.first_name }} 
-            {{ logged_in_user.last_name }}{% else %}{{ logged_in_user.full_name }}{% endif %}
+            {{ logged_in_user.full_name }}
           </p>
-          <p class="text-sm text-gray-500">@{{ logged_in_user.username }}</p>
-        </div>
-
-        <div
-          class="text-xs text-gray-600 space-y-1 pt-1 border-t border-gray-200"
-        >
-          <p>
-            <span class="font-semibold">البريد:</span> {{ logged_in_user.email }}
-          </p>
-          <p>
-            <span class="font-semibold">الهاتف:</span> {{ logged_in_user.phone_number }}
+          <p class="text-sm text-gray-500 font-mono" dir="ltr">
+            @{{ logged_in_user.phone_number }}
           </p>
         </div>
 
-        <div class="flex items-center gap-3 pt-2">
-          <a
-            href="{% url 'register' %}"
-            class="w-1/2 text-center bg-[#1b313e] hover:bg-[#152631] text-white text-sm font-semibold py-2 px-3 rounded-lg shadow-sm transition"
-          >
-            تسجيل شبكة جديدة
-          </a>
+        <div class="text-xs text-gray-600 space-y-1.5 pt-2 border-t border-gray-200">
+          <p class="flex items-center justify-between">
+            <span class="font-semibold text-gray-500">رقم الهاتف:</span>
+            <span class="font-mono text-gray-800" dir="ltr">{{ logged_in_user.phone_number }}</span>
+          </p>
+          <p class="flex items-center justify-between">
+            <span class="font-semibold text-gray-500">تاريخ الإضافة:</span>
+            <span class="text-gray-800">{{ logged_in_user.add_at|date:"Y-m-d H:i" }}</span>
+          </p>
+        </div>
+
+        <div class="pt-2">
           <a
             href="{% url 'logout' %}"
-            class="w-1/2 text-center bg-gray-200 hover:bg-red-50 hover:text-red-700 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg transition"
+            class="w-full block text-center bg-gray-100 hover:bg-red-50 hover:text-red-700 text-gray-700 text-sm font-semibold py-2.5 px-4 rounded-lg border border-gray-200 transition duration-150"
           >
             تسجيل الخروج
           </a>
@@ -98,28 +96,29 @@
 
       <!-- Login Form -->
       <form method="post" id="login-form" novalidate class="space-y-4">
-        {% csrf_token %} {% if form.non_field_errors %}
-        <div
-          class="p-3.5 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg"
-        >
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="p-3.5 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
           {% for error in form.non_field_errors %}
           <p>{{ error }}</p>
           {% endfor %}
         </div>
         {% endif %}
 
-        <!-- Username or Email -->
+        <!-- Phone Number -->
         <div>
           <label
-            for="{{ form.username_or_email.id_for_label }}"
+            for="{{ form.phone_number.id_for_label }}"
             class="block mb-1.5 text-sm font-semibold text-gray-700"
           >
-            {{ form.username_or_email.label }}
+            {{ form.phone_number.label }}
             <span class="text-red-500">*</span>
           </label>
-          {{ form.username_or_email }} {% if form.username_or_email.errors %}
+          {{ form.phone_number }}
+          {% if form.phone_number.errors %}
           <div class="mt-1 text-sm text-red-600 space-y-0.5">
-            {% for error in form.username_or_email.errors %}
+            {% for error in form.phone_number.errors %}
             <p>{{ error }}</p>
             {% endfor %}
           </div>
@@ -132,7 +131,8 @@
             for="{{ form.password.id_for_label }}"
             class="block mb-1.5 text-sm font-semibold text-gray-700"
           >
-            {{ form.password.label }} <span class="text-red-500">*</span>
+            {{ form.password.label }}
+            <span class="text-red-500">*</span>
           </label>
           <div class="relative">
             {{ form.password }}
@@ -192,17 +192,6 @@
           </svg>
           تسجيل الدخول
         </button>
-
-        <div class="text-center mt-6 pt-3 border-t border-gray-100">
-          <p class="text-sm text-gray-600">
-            ليس لديك حساب ؟
-            <a
-              href="{% url 'register' %}"
-              class="font-bold text-[#1b313e] hover:underline mr-1 transition-colors"
-              >سجل من هنا</a
-            >
-          </p>
-        </div>
       </form>
     </main>
 
@@ -217,7 +206,7 @@
         });
       }
 
-      // Client-side quick feedback validation
+      // Quick validation feedback
       const form = document.getElementById("login-form");
       form.addEventListener("submit", (e) => {
         const inputs = form.querySelectorAll('input:not([type="hidden"])');

@@ -1,33 +1,40 @@
+from django import forms
 from django.contrib import admin
-from .models import Clients, Engineers, Networks
+from .models import Users
 
 
-@admin.register(Clients)
-class ClientsAdmin(admin.ModelAdmin):
-    list_display = ('username', 'first_name', 'last_name', 'email', 'phone_number', 'joined_at')
-    search_fields = ('username', 'first_name', 'last_name', 'email', 'phone_number')
-    list_filter = ('joined_at',)
+class UsersAdminForm(forms.ModelForm):
+    password = forms.CharField(
+        label="كلمة المرور",
+        widget=forms.PasswordInput(render_value=False),
+        required=False,
+        help_text="أدخل كلمة المرور للمستخدم (سيتم تشفيرها تلقائياً)."
+    )
+
+    class Meta:
+        model = Users
+        fields = '__all__'
+
+
+@admin.register(Users)
+class UsersAdmin(admin.ModelAdmin):
+    form = UsersAdminForm
+    list_display = ('full_name', 'phone_number', 'username', 'role', 'add_at')
+    list_filter = ('role', 'add_at')
+    search_fields = ('full_name', 'phone_number', 'username')
+    readonly_fields = ('username', 'add_at')
+    fields = ('full_name', 'phone_number', 'password', 'role', 'username', 'add_at')
 
     def save_model(self, request, obj, form, change):
-        if obj.password and not obj.password.startswith(('pbkdf2_', 'argon2', 'bcrypt')):
-            obj.set_password(obj.password)
+        # Auto-set username to match phone_number
+        obj.username = obj.phone_number
+
+        # If a new password was provided in the form
+        new_password = form.cleaned_data.get('password')
+        if new_password:
+            obj.set_password(new_password)
+        elif not change and not obj.password:
+            # For new record without password, keep empty or handle
+            pass
+
         super().save_model(request, obj, form, change)
-
-
-@admin.register(Engineers)
-class EngineersAdmin(admin.ModelAdmin):
-    list_display = ('username', 'full_name', 'email', 'phone_number', 'number_of_networks', 'joined_at')
-    search_fields = ('username', 'full_name', 'email', 'phone_number')
-    list_filter = ('joined_at',)
-
-    def save_model(self, request, obj, form, change):
-        if obj.password and not obj.password.startswith(('pbkdf2_', 'argon2', 'bcrypt')):
-            obj.set_password(obj.password)
-        super().save_model(request, obj, form, change)
-
-
-@admin.register(Networks)
-class NetworksAdmin(admin.ModelAdmin):
-    list_display = ('network_name', 'owner', 'assigned_engineer', 'created_at')
-    search_fields = ('network_name', 'owner__username', 'assigned_engineer__full_name')
-    list_filter = ('created_at',)
