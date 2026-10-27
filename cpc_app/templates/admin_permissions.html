@@ -1,0 +1,280 @@
+<!doctype html>
+{% load static %}
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>إدارة الصلاحيات والمستخدمين - سنتر بوينت كونكت</title>
+    <style>
+      .bg-concentric-waves {
+        background-color: #f8fafc;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg stroke='%231b313e' fill='none' opacity='0.06'%3E%3Ccircle cx='0' cy='0' r='20' stroke-width='1'/%3E%3Ccircle cx='0' cy='0' r='40' stroke-width='1.2'/%3E%3Ccircle cx='0' cy='0' r='60' stroke-width='1'/%3E%3Ccircle cx='0' cy='0' r='80' stroke-width='1.2'/%3E%3Ccircle cx='0' cy='0' r='100' stroke-width='1'/%3E%3Ccircle cx='0' cy='0' r='120' stroke-width='1.2'/%3E%3Ccircle cx='0' cy='0' r='140' stroke-width='1'/%3E%3Ccircle cx='160' cy='160' r='20' stroke-width='1'/%3E%3Ccircle cx='160' cy='160' r='40' stroke-width='1.2'/%3E%3Ccircle cx='160' cy='160' r='60' stroke-width='1'/%3E%3Ccircle cx='160' cy='160' r='80' stroke-width='1.2'/%3E%3Ccircle cx='160' cy='160' r='100' stroke-width='1'/%3E%3Ccircle cx='160' cy='160' r='120' stroke-width='1.2'/%3E%3Ccircle cx='160' cy='160' r='140' stroke-width='1'/%3E%3C/g%3E%3C/svg%3E");
+        background-repeat: repeat;
+        background-position: top left;
+        background-size: 160px 160px;
+      }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-concentric-waves min-h-screen">
+    <!-- Top Header -->
+    <header class="bg-[#1b313e] shadow-lg">
+      <div class="w-full px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center gap-3">
+            <a href="{% url 'portal' %}" class="text-xl font-bold text-white hover:text-gray-200 transition">سنتر بوينت كونكت</a>
+            <span class="hidden sm:inline-block text-xs text-gray-300 bg-white/10 px-2 py-0.5 rounded-full font-mono">CPC ERP</span>
+          </div>
+          <div class="flex items-center gap-4">
+            <a href="{% url 'portal' %}" class="text-sm text-gray-300 hover:text-white transition flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+              </svg>
+              العودة للنظام (ERP)
+            </a>
+            <a href="{% url 'logout' %}" class="text-gray-300 hover:text-red-400 transition" title="تسجيل الخروج">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="w-full px-4 sm:px-6 lg:px-8 mt-4">
+      {% for message in messages %}
+      <div class="p-3.5 rounded-lg text-sm mb-2 {% if message.tags == 'success' %}bg-green-50 border border-green-200 text-green-800{% elif message.tags == 'error' %}bg-red-50 border border-red-200 text-red-800{% else %}bg-blue-50 border border-blue-200 text-blue-800{% endif %}">
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <main class="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      
+      <!-- Top Action Bar / Page Header -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+            <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold text-gray-800">إدارة صلاحيات التبويبات والمستخدمين</h1>
+            <p class="text-sm text-gray-500">تحكم بمستويات وصول المستخدمين لكل تبويب: (شامل All / قراءة فقط Read only / لا يوجد None)</p>
+          </div>
+        </div>
+        <div>
+          <button type="button" 
+                  id="open-modal-btn"
+                  class="bg-[#1b313e] hover:bg-[#152631] text-white font-semibold py-2.5 px-5 rounded-xl shadow transition duration-150 flex items-center gap-2 cursor-pointer w-full sm:w-auto justify-center">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+            </svg>
+            إضافة مستخدم جديد
+          </button>
+        </div>
+      </div>
+
+      <!-- Permissions Table Card -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+          <h2 class="text-base font-bold text-gray-800">مستويات الصلاحيات للتبويبات</h2>
+          <span class="text-xs text-gray-500 font-medium">العدد الإجمالي: {{ users_permissions|length }} مستخدم</span>
+        </div>
+
+        <form method="post" action="{% url 'update_permissions' %}">
+          {% csrf_token %}
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200">
+                  <th class="text-right px-6 py-4 text-sm font-semibold text-gray-600">المستخدم</th>
+                  <th class="text-center px-4 py-4 text-sm font-semibold text-gray-600">الدور</th>
+                  <th class="text-center px-4 py-4 text-sm font-semibold text-gray-600">نوع الحساب</th>
+                  <th class="text-center px-4 py-4 text-sm font-semibold text-gray-600" title="صلاحية إضافية لإدارة وتعديل المنتجات">
+                    إدارة المنتجات
+                  </th>
+                  {% for tab in all_tabs %}
+                  <th class="text-center px-4 py-4 text-sm font-semibold text-gray-600">{{ tab.name }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                {% for item in users_permissions %}
+                <tr class="hover:bg-gray-50 transition">
+                  <td class="px-6 py-4">
+                    <div>
+                      <p class="text-sm font-semibold text-gray-800">{{ item.user.full_name }}</p>
+                      <p class="text-xs text-gray-400 font-mono" dir="ltr">{{ item.user.phone_number }}</p>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 text-center">
+                    <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                      {% if item.user.role == 'ENGINEER' %}bg-purple-100 text-purple-700
+                      {% elif item.user.role == 'SALES' %}bg-amber-100 text-amber-700
+                      {% elif item.user.role == 'ADMIN' %}bg-rose-100 text-rose-700
+                      {% else %}bg-teal-100 text-teal-700{% endif %}">
+                      {{ item.user.get_role_display }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-4 text-center">
+                    {% if item.user.is_superuser %}
+                      <span class="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                        مدير نظام
+                      </span>
+                    {% else %}
+                      <span class="text-xs text-gray-500">
+                        مستخدم عادي
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-4 text-center">
+                    <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs font-medium text-gray-700">
+                      <input type="checkbox" 
+                             name="can_manage_products_{{ item.user.id }}" 
+                             {% if item.user.can_manage_products or item.user.is_superuser %}checked{% endif %}
+                             {% if item.user.is_superuser %}disabled{% endif %}
+                             class="w-4 h-4 text-[#1b313e] rounded border-gray-300 focus:ring-[#1b313e]">
+                      <span>مسموح</span>
+                    </label>
+                  </td>
+                  {% for perm in item.tab_perms %}
+                  <td class="px-3 py-4 text-center">
+                    <select name="{{ perm.field_name }}" 
+                            class="text-xs font-semibold py-1.5 px-2 rounded-lg border focus:ring-2 focus:ring-[#1b313e] outline-none transition
+                              {% if perm.level == 'all' %}bg-emerald-50 text-emerald-800 border-emerald-200
+                              {% elif perm.level == 'read' %}bg-amber-50 text-amber-800 border-amber-200
+                              {% else %}bg-rose-50 text-rose-700 border-rose-200{% endif %}">
+                      <option value="all" {% if perm.level == 'all' %}selected{% endif %}>شامل (All)</option>
+                      <option value="read" {% if perm.level == 'read' %}selected{% endif %}>قراءة فقط (Read only)</option>
+                      <option value="none" {% if perm.level == 'none' %}selected{% endif %}>لا يوجد (None)</option>
+                    </select>
+                  </td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Save Button -->
+          <div class="px-8 py-5 bg-gray-50 border-t border-gray-100 flex justify-end">
+            <button type="submit"
+                    class="bg-[#1b313e] hover:bg-[#152631] text-white font-semibold py-2.5 px-8 rounded-lg shadow transition-colors duration-200 flex items-center gap-2 cursor-pointer">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              حفظ تغييرات الصلاحيات
+            </button>
+          </div>
+        </form>
+      </div>
+    </main>
+
+    <!-- Add User Modal -->
+    <div id="add-user-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-100 transition-all">
+        <!-- Modal Header -->
+        <div class="bg-[#1b313e] px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-2 text-white">
+            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+            </svg>
+            <h3 class="font-bold text-lg">إضافة مستخدم جديد</h3>
+          </div>
+          <button type="button" id="close-modal-btn" class="text-gray-300 hover:text-white transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Modal Body / Form -->
+        <form method="post" action="{% url 'add_user' %}" class="p-6 space-y-4">
+          {% csrf_token %}
+          
+          <div>
+            <label for="{{ new_user_form.full_name.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
+              الاسم الكامل <span class="text-red-500">*</span>
+            </label>
+            {{ new_user_form.full_name }}
+          </div>
+
+          <div>
+            <label for="{{ new_user_form.phone_number.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
+              رقم الهاتف (اسم المستخدم) <span class="text-red-500">*</span>
+            </label>
+            {{ new_user_form.phone_number }}
+          </div>
+
+          <div>
+            <label for="{{ new_user_form.password.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
+              كلمة المرور <span class="text-red-500">*</span>
+            </label>
+            {{ new_user_form.password }}
+          </div>
+
+          <div>
+            <label for="{{ new_user_form.role.id_for_label }}" class="block mb-1.5 text-sm font-semibold text-gray-700">
+              الدور / الفريق <span class="text-red-500">*</span>
+            </label>
+            {{ new_user_form.role }}
+          </div>
+
+          <div class="flex items-center gap-2 pt-2">
+            {{ new_user_form.can_manage_products }}
+            <label for="{{ new_user_form.can_manage_products.id_for_label }}" class="text-sm font-semibold text-gray-700 cursor-pointer">
+              منح صلاحية إدارة وإضافة المنتجات في قسم المبيعات
+            </label>
+          </div>
+
+          <div class="flex items-center gap-2">
+            {{ new_user_form.is_superuser }}
+            <label for="{{ new_user_form.is_superuser.id_for_label }}" class="text-sm font-semibold text-gray-700 cursor-pointer">
+              تعيين كمدير نظام (له صلاحية تعديل الصلاحيات وإدارة كل شيء)
+            </label>
+          </div>
+
+          <div class="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+            <button type="button" id="cancel-modal-btn" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition">
+              إلغاء
+            </button>
+            <button type="submit" class="px-6 py-2 bg-[#1b313e] hover:bg-[#152631] text-white text-sm font-semibold rounded-lg shadow transition">
+              إضافة المستخدم
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const modal = document.getElementById('add-user-modal');
+      const openBtn = document.getElementById('open-modal-btn');
+      const closeBtn = document.getElementById('close-modal-btn');
+      const cancelBtn = document.getElementById('cancel-modal-btn');
+
+      function openModal() {
+        modal.classList.remove('hidden');
+      }
+
+      function closeModal() {
+        modal.classList.add('hidden');
+      }
+
+      if (openBtn) openBtn.addEventListener('click', openModal);
+      if (closeBtn) closeBtn.addEventListener('click', closeModal);
+      if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeModal();
+        }
+      });
+    </script>
+  </body>
+</html>

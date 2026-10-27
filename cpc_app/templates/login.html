@@ -23,7 +23,7 @@
           سنتر بوينت كونكت
         </h1>
         <p class="text-base font-medium text-gray-500 mt-1">
-          النظام الداخلي للمكتب • CPC
+          CPC ERP
         </p>
       </div>
       <hr class="my-5 border-gray-200" />
@@ -41,56 +41,6 @@
           {{ message }}
         </div>
         {% endfor %}
-      </div>
-      {% endif %}
-
-      {% if logged_in_user %}
-      <!-- Card for currently logged-in user -->
-      <div class="p-5 bg-slate-50 border border-slate-200 rounded-xl mb-6 space-y-3">
-        <div class="flex items-center justify-between">
-          <span
-            class="text-xs font-semibold px-3 py-1 rounded-full
-              {% if logged_in_user.role == 'ENGINEER' %}bg-purple-100 text-purple-800 border border-purple-200
-              {% elif logged_in_user.role == 'SALES' %}bg-amber-100 text-amber-800 border border-amber-200
-              {% elif logged_in_user.role == 'ADMIN' %}bg-rose-100 text-rose-800 border border-rose-200
-              {% else %}bg-teal-100 text-teal-800 border border-teal-200{% endif %}"
-          >
-            {{ logged_in_user.get_role_display }}
-          </span>
-          <span class="inline-flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            جلسة نشطة
-          </span>
-        </div>
-
-        <div>
-          <p class="text-lg font-bold text-gray-800">
-            {{ logged_in_user.full_name }}
-          </p>
-          <p class="text-sm text-gray-500 font-mono" dir="ltr">
-            @{{ logged_in_user.phone_number }}
-          </p>
-        </div>
-
-        <div class="text-xs text-gray-600 space-y-1.5 pt-2 border-t border-gray-200">
-          <p class="flex items-center justify-between">
-            <span class="font-semibold text-gray-500">رقم الهاتف:</span>
-            <span class="font-mono text-gray-800" dir="ltr">{{ logged_in_user.phone_number }}</span>
-          </p>
-          <p class="flex items-center justify-between">
-            <span class="font-semibold text-gray-500">تاريخ الإضافة:</span>
-            <span class="text-gray-800">{{ logged_in_user.add_at|date:"Y-m-d H:i" }}</span>
-          </p>
-        </div>
-
-        <div class="pt-2">
-          <a
-            href="{% url 'logout' %}"
-            class="w-full block text-center bg-gray-100 hover:bg-red-50 hover:text-red-700 text-gray-700 text-sm font-semibold py-2.5 px-4 rounded-lg border border-gray-200 transition duration-150"
-          >
-            تسجيل الخروج
-          </a>
-        </div>
       </div>
       {% endif %}
 

@@ -1,0 +1,1500 @@
+<!doctype html>
+{% load static humanize %}
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>سنتر بوينت كونكت - CPC ERP</title>
+    <style>
+      .bg-concentric-waves {
+        background-color: #f8fafc;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg stroke='%231b313e' fill='none' opacity='0.06'%3E%3Ccircle cx='0' cy='0' r='20' stroke-width='1'/%3E%3Ccircle cx='0' cy='0' r='40' stroke-width='1.2'/%3E%3Ccircle cx='0' cy='0' r='60' stroke-width='1'/%3E%3Ccircle cx='0' cy='0' r='80' stroke-width='1.2'/%3E%3Ccircle cx='0' cy='0' r='100' stroke-width='1'/%3E%3Ccircle cx='0' cy='0' r='120' stroke-width='1.2'/%3E%3Ccircle cx='0' cy='0' r='140' stroke-width='1'/%3E%3Ccircle cx='160' cy='160' r='20' stroke-width='1'/%3E%3Ccircle cx='160' cy='160' r='40' stroke-width='1.2'/%3E%3Ccircle cx='160' cy='160' r='60' stroke-width='1'/%3E%3Ccircle cx='160' cy='160' r='80' stroke-width='1.2'/%3E%3Ccircle cx='160' cy='160' r='100' stroke-width='1'/%3E%3Ccircle cx='160' cy='160' r='120' stroke-width='1.2'/%3E%3Ccircle cx='160' cy='160' r='140' stroke-width='1'/%3E%3C/g%3E%3C/svg%3E");
+        background-repeat: repeat;
+        background-position: top left;
+        background-size: 160px 160px;
+      }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-concentric-waves min-h-screen flex flex-col justify-between">
+    <div>
+      <!-- Top Header -->
+      <header class="bg-[#1b313e] shadow-lg sticky top-0 z-30">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
+          <div class="flex items-center justify-between h-16">
+            <!-- App Name -->
+            <div class="flex items-center gap-3">
+              <h1 class="text-xl font-bold text-white tracking-wide">سنتر بوينت كونكت</h1>
+              <span class="hidden sm:inline-block text-xs text-gray-300 bg-white/10 px-2 py-0.5 rounded-full font-mono">CPC ERP</span>
+            </div>
+
+            <!-- User Info & Actions -->
+            <div class="flex items-center gap-4">
+              {% if is_superuser %}
+              <a href="{% url 'admin_permissions' %}"
+                 class="text-xs sm:text-sm bg-amber-500 hover:bg-amber-600 text-white font-semibold px-3.5 py-1.5 rounded-xl transition shadow flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+                <span>إدارة الصلاحيات</span>
+              </a>
+              {% endif %}
+
+              <div class="flex items-center gap-2.5 text-white">
+                <div class="text-right">
+                  <p class="text-sm font-semibold leading-tight">{{ user.full_name }}</p>
+                  <p class="text-xs text-gray-300 font-light">{{ user.get_role_display }}</p>
+                </div>
+              </div>
+
+              <a href="{% url 'logout' %}"
+                 class="text-gray-300 hover:text-red-400 transition p-1" title="تسجيل الخروج">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Navigation Tabs (المبيعات، الخدمات، الفواتير، الحسابات، التقارير) -->
+      <nav class="bg-white border-b border-gray-200 shadow-sm sticky top-16 z-20">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
+          <div class="flex gap-1 overflow-x-auto -mb-px scrollbar-none">
+            {% for tab in tabs %}
+            <a href="?tab={{ tab.id }}"
+               class="flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-[3px] transition-all duration-200 whitespace-nowrap
+                 {% if active_tab == tab.id %}
+                   border-[#1b313e] text-[#1b313e] bg-slate-50
+                 {% else %}
+                   border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50
+                 {% endif %}">
+
+              {% if tab.icon == 'cart' %}
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/>
+              </svg>
+              {% elif tab.icon == 'wrench' %}
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              {% elif tab.icon == 'document-text' %}
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              {% elif tab.icon == 'calculator' %}
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+              </svg>
+              {% elif tab.icon == 'chart' %}
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              </svg>
+              {% endif %}
+
+              <span>{{ tab.name }}</span>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+      </nav>
+
+      <!-- Messages -->
+      {% if messages %}
+      <div class="w-full px-4 sm:px-6 lg:px-8 mt-4">
+        {% for message in messages %}
+        <div class="p-3.5 rounded-xl text-sm mb-2 shadow-sm flex items-center gap-2
+          {% if message.tags == 'success' %}bg-emerald-50 border border-emerald-200 text-emerald-800
+          {% elif message.tags == 'error' %}bg-rose-50 border border-rose-200 text-rose-800
+          {% elif message.tags == 'warning' %}bg-amber-50 border border-amber-200 text-amber-800
+          {% else %}bg-blue-50 border border-blue-200 text-blue-800{% endif %}">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {% if message.tags == 'success' %}
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            {% else %}
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            {% endif %}
+          </svg>
+          <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Tab Content Area -->
+      <main class="w-full px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- 1. SALES TAB (المبيعات) -->
+        {% if active_tab == 'sales' %}
+        <div class="space-y-6">
+          <!-- Top bar with Search and Filters and "اضافة منتج" button -->
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <span>المبيعات والمخزون</span>
+                <span class="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full font-mono">{{ products|length }} منتج</span>
+              </h2>
+              <p class="text-sm text-gray-500 mt-1">عرض بطاقات المنتجات مع الكميات المتوفرة وتحديثاتها</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+              <!-- Search Input -->
+              <div class="relative w-full sm:w-64">
+                <input type="text" id="sales-search-input" placeholder="بحث عن منتج..."
+                       class="w-full pl-3 pr-9 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1b313e] outline-none">
+                <svg class="w-4 h-4 text-gray-400 absolute right-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+              </div>
+
+              <!-- Filter Condition -->
+              <select id="sales-filter-condition" class="py-2 px-3 text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-[#1b313e] outline-none">
+                <option value="all">كل الحالات</option>
+                <option value="new">جديد فقط</option>
+                <option value="used">مستخدم فقط</option>
+              </select>
+
+              <!-- Filter Availability -->
+              <select id="sales-filter-avail" class="py-2 px-3 text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-[#1b313e] outline-none">
+                <option value="all">كل المخزون</option>
+                <option value="available">متوفر فقط</option>
+                <option value="out">غير متوفر فقط</option>
+              </select>
+
+              {% if can_manage_products %}
+              <button type="button" 
+                      id="open-product-modal-btn"
+                      class="bg-[#1b313e] hover:bg-[#152631] text-white font-semibold py-2 px-4 rounded-xl shadow transition duration-150 flex items-center gap-1.5 cursor-pointer text-sm shrink-0">
+                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                <span>إضافة منتج</span>
+              </button>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Horizontal Cards Grid (Optimized for wide screen) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4" id="products-cards-grid">
+            {% for product in products %}
+            <div class="product-card rounded-2xl border transition-all duration-200 p-5 flex flex-col justify-between group relative
+              {% if product.available_count > 0 %}
+                bg-white border-gray-200/80 shadow-sm hover:shadow-md
+              {% else %}
+                bg-gray-100/70 border-gray-300 shadow-none opacity-85
+              {% endif %}"
+              data-name="{{ product.name|lower }}"
+              data-condition="{{ product.condition }}"
+              data-available="{{ product.available_count }}">
+
+              <!-- Red/Grey middle banner if out of stock -->
+              {% if product.available_count == 0 %}
+              <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 pointer-events-none z-10 flex items-center justify-center">
+                <div class="w-full border-t-2 border-rose-400/50 absolute"></div>
+                <span class="bg-rose-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md z-20 tracking-wider">
+                  غير متوفر
+                </span>
+              </div>
+              {% endif %}
+
+              <div>
+                <div class="flex items-start justify-between gap-3 mb-3">
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-bold text-lg {% if product.available_count > 0 %}text-gray-800 group-hover:text-[#1b313e]{% else %}text-gray-500 line-through{% endif %} transition">
+                      {{ product.name }}
+                    </h3>
+
+                    <!-- Edit Pen Icon for users with can_manage_products permission -->
+                    {% if can_manage_products %}
+                    <button type="button"
+                            title="تعديل بيانات المنتج"
+                            onclick="openEditProductModal({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, '{{ product.condition }}', {{ product.initial_count }}, {{ product.available_count }})"
+                            class="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition" aria-label="تعديل">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                      </svg>
+                    </button>
+                    {% endif %}
+                  </div>
+
+                  <!-- Badge for Condition -->
+                  {% if product.condition == 'new' %}
+                  <span class="inline-flex items-center text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full shrink-0">
+                    جديد
+                  </span>
+                  {% else %}
+                  <span class="inline-flex items-center text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full shrink-0">
+                    مستخدم
+                  </span>
+                  {% endif %}
+                </div>
+
+                <div class="space-y-2 py-2 border-y border-gray-200/60 text-sm">
+                  <div class="flex items-center justify-between">
+                    <span class="text-gray-500">السعر:</span>
+                    <span class="font-bold text-base text-gray-900 font-mono">{{ product.price|floatformat:0|intcomma }} <span class="text-xs font-normal text-gray-500">ر.ي</span></span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-gray-500">متوفر:</span>
+                    <span class="font-bold px-2 py-0.5 rounded-md text-sm font-mono
+                      {% if product.available_count > 0 %}bg-emerald-50 text-emerald-700 border border-emerald-200
+                      {% else %}bg-gray-200 text-gray-600 border border-gray-300{% endif %}">
+                      {{ product.available_count }} قطعة
+                    </span>
+                  </div>
+                  {% if is_superuser %}
+                  <div class="flex items-center justify-between text-xs text-gray-400 pt-1">
+                    <span>إجمالي المدخل: {{ product.initial_count }}</span>
+                    <span>تم بيع: {{ product.sold_count }}</span>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- Card Action (Quick Bill button - only if authorized and product available) -->
+              <div class="mt-4 pt-2 flex items-center justify-between">
+                <span class="text-[11px] text-gray-400">{{ product.created_at|date:"Y-m-d" }}</span>
+                {% if can_create_sales_bill and product.available_count > 0 %}
+                <button type="button"
+                        onclick="openBillModalWithProduct({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, '{{ product.get_condition_display }}')"
+                        class="text-xs font-semibold text-[#1b313e] bg-slate-100 hover:bg-[#1b313e] hover:text-white px-3 py-1.5 rounded-lg transition duration-150">
+                  انشاء فاتورة
+                </button>
+                {% elif product.available_count <= 0 %}
+                <span class="text-xs font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-lg">
+                  غير متوفر
+                </span>
+                {% endif %}
+              </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full bg-white rounded-2xl p-12 text-center border border-gray-100">
+              <p class="text-gray-600 font-semibold text-lg">لا توجد منتجات مسجلة حالياً</p>
+              {% if can_manage_products %}
+              <p class="text-gray-400 text-sm mt-1">يمكنك البدء بإضافة المنتجات من زر "إضافة منتج" بالأعلى</p>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- 2. SERVICES TAB (الخدمات) -->
+        {% elif active_tab == 'services' %}
+        <div class="space-y-6">
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-gray-800">قسم الخدمات والدعم الفني</h2>
+              <p class="text-sm text-gray-500 mt-1">إدارة الخدمات التقنية والفنية وإصدار فواتير الخدمات للعملاء</p>
+            </div>
+            <button type="button" 
+                    id="open-service-bill-btn"
+                    class="bg-[#1b313e] hover:bg-[#152631] text-white font-semibold py-2.5 px-5 rounded-xl shadow transition duration-150 flex items-center gap-2 cursor-pointer">
+              <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              <span>إنشاء فاتورة خدمات</span>
+            </button>
+          </div>
+
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center py-14">
+            <div class="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-purple-600">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">خدمات الشبكات والأنظمة</h3>
+            <p class="text-gray-500 max-w-md mx-auto text-sm">يمكنك إنشاء فواتير خاصة بالخدمات التقنية مباشرة عبر زر إنشاء فاتورة خدمات.</p>
+          </div>
+        </div>
+
+        <!-- 3. BILLS TAB (الفواتير - بعد الخدمات، وبدون زر إنشاء فاتورة بالتبويب) -->
+        {% elif active_tab == 'bills' %}
+        <div class="space-y-6">
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-gray-800">سجل الفواتير</h2>
+              <p class="text-sm text-gray-500 mt-1">عرض جميع الفواتير الصادرة مع تفاصيل العملاء والمنتجات وإمكانية المعاينة والطباعة</p>
+            </div>
+
+            <!-- Search inside bills -->
+            <div class="relative w-full sm:w-72">
+              <input type="text" id="bills-search-input" placeholder="بحث بالعميل، الهاتف، أو رقم الفاتورة..."
+                     class="w-full pl-3 pr-9 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1b313e] outline-none">
+              <svg class="w-4 h-4 text-gray-400 absolute right-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Bills Table -->
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-right" id="bills-table">
+                <thead>
+                  <tr class="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600">
+                    <th class="px-6 py-4">رقم الفاتورة</th>
+                    <th class="px-6 py-4">العميل</th>
+                    <th class="px-6 py-4">رقم الهاتف</th>
+                    <th class="px-6 py-4">اسم الشبكة</th>
+                    <th class="px-6 py-4">المنتجات / الخدمات</th>
+                    <th class="px-6 py-4">المبلغ الإجمالي</th>
+                    <th class="px-6 py-4">أنشئت بواسطة</th>
+                    <th class="px-6 py-4">التاريخ</th>
+                    <th class="px-6 py-4 text-center">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-sm">
+                  {% for bill in bills %}
+                  <tr class="hover:bg-gray-50 transition bill-row"
+                      data-search="{{ bill.id }} {{ bill.client.name|lower }} {{ bill.client.phone }} {{ bill.client.network_name|default:''|lower }}">
+                    <td class="px-6 py-4 font-mono font-bold text-[#1b313e]">
+                      #{{ bill.id }}
+                    </td>
+                    <td class="px-6 py-4 font-semibold text-gray-800">
+                      {{ bill.client.name }}
+                    </td>
+                    <td class="px-6 py-4 font-mono text-gray-600" dir="ltr">
+                      {{ bill.client.phone }}
+                    </td>
+                    <td class="px-6 py-4 text-gray-600">
+                      {{ bill.client.network_name|default:"—" }}
+                    </td>
+                    <td class="px-6 py-4">
+                      <div class="space-y-1">
+                        {% for item in bill.items.all %}
+                        <div class="text-xs bg-slate-50 border border-slate-200 px-2 py-1 rounded inline-block mr-1">
+                          <span class="font-semibold text-gray-800">{{ item.product_name }}</span>
+                          <span class="text-gray-500 font-mono">({{ item.quantity }}x {{ item.price|floatformat:0|intcomma }} ر.ي)</span>
+                        </div>
+                        {% endfor %}
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 font-bold font-mono text-emerald-700">
+                      {{ bill.total_amount|floatformat:0|intcomma }} ر.ي
+                    </td>
+                    <!-- Shows ONLY the name of the user who created the bill -->
+                    <td class="px-6 py-4 font-semibold text-gray-800">
+                      {{ bill.created_by.full_name|default:"النظام" }}
+                    </td>
+                    <td class="px-6 py-4 text-xs text-gray-500 font-mono">
+                      {{ bill.created_at|date:"Y-m-d H:i" }}
+                    </td>
+                    <!-- 2 Buttons for Every Bill: View and Print (Icons Only) -->
+                    <td class="px-6 py-4 text-center">
+                      <div class="flex items-center justify-center gap-2">
+                        <!-- Open / View Bill Modal Icon -->
+                        <button type="button"
+                                title="عرض تفاصيل الفاتورة"
+                                onclick="openBillViewer({{ bill.id }})"
+                                class="p-2 text-gray-600 hover:text-[#1b313e] hover:bg-slate-100 rounded-lg transition" aria-label="عرض الفاتورة">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                          </svg>
+                        </button>
+
+                        <!-- Print Bill Icon -->
+                        <button type="button"
+                                title="طباعة الفاتورة"
+                                onclick="printBillDirect({{ bill.id }})"
+                                class="p-2 text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition" aria-label="طباعة الفاتورة">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="9" class="text-center py-12 text-gray-400">
+                      لا توجد فواتير صادرة حتى الآن
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. ACCOUNTS TAB (الحسابات) -->
+        {% elif active_tab == 'accounts' %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center py-16">
+          <div class="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-600">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <h2 class="text-2xl font-bold text-gray-800 mb-2">الحسابات</h2>
+          <p class="text-gray-500">قسم إدارة الحسابات المالية والقيود</p>
+        </div>
+
+        <!-- 5. REPORTS TAB (التقارير) -->
+        {% elif active_tab == 'reports' %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center py-16">
+          <div class="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-600">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+          </div>
+          <h2 class="text-2xl font-bold text-gray-800 mb-2">التقارير</h2>
+          <p class="text-gray-500">قسم الإحصائيات وتقارير المبيعات الشاملة</p>
+        </div>
+
+        {% else %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center py-16">
+          <p class="text-gray-500 text-lg">لا توجد صلاحيات متاحة لعرض أي قسم.</p>
+          <p class="text-gray-400 text-sm mt-2">يرجى التواصل مع مدير النظام.</p>
+        </div>
+        {% endif %}
+      </main>
+    </div>
+
+    <!-- Floating Action Button (FAB) on LEFT side with increased bottom space (ONLY VISIBLE in Sales or Services tabs if authorized) -->
+    {% if active_tab == 'sales' and can_create_sales_bill %}
+    <button type="button" 
+            id="open-bill-modal-btn"
+            title="إنشاء فاتورة مبيعات للمنتجات"
+            class="fixed bottom-10 left-8 z-40 bg-[#1b313e] hover:bg-[#152631] text-white font-bold py-3.5 px-6 rounded-full shadow-2xl hover:shadow-cyan-900/30 transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2.5 cursor-pointer border border-white/20">
+      <div class="w-7 h-7 bg-amber-400 rounded-full flex items-center justify-center text-[#1b313e] shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+        </svg>
+      </div>
+      <span class="text-sm tracking-wide">إنشاء فاتورة مبيعات</span>
+    </button>
+    {% elif active_tab == 'services' and can_create_services_bill %}
+    <button type="button" 
+            id="open-bill-modal-btn"
+            title="إنشاء فاتورة خدمات أو صيانة"
+            class="fixed bottom-10 left-8 z-40 bg-purple-700 hover:bg-purple-800 text-white font-bold py-3.5 px-6 rounded-full shadow-2xl hover:shadow-purple-900/30 transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2.5 cursor-pointer border border-white/20">
+      <div class="w-7 h-7 bg-amber-400 rounded-full flex items-center justify-center text-purple-900 shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+        </svg>
+      </div>
+      <span class="text-sm tracking-wide">إنشاء فاتورة خدمات</span>
+    </button>
+    {% endif %}
+
+    <!-- MODAL 1: ADD PRODUCT (اضافة منتج) -->
+    {% if can_manage_products %}
+    <div id="add-product-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-100 transition-all">
+        <!-- Header -->
+        <div class="bg-[#1b313e] px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-2 text-white">
+            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+            <h3 class="font-bold text-lg">إضافة منتج جديد</h3>
+          </div>
+          <button type="button" id="close-product-modal-btn" class="text-gray-300 hover:text-white transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Form -->
+        <form method="post" action="{% url 'add_product' %}" class="p-6 space-y-4">
+          {% csrf_token %}
+          
+          <div>
+            <label for="{{ product_form.name.id_for_label }}" class="block mb-1 text-sm font-semibold text-gray-700">
+              اسم المنتج <span class="text-red-500">*</span>
+            </label>
+            {{ product_form.name }}
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="{{ product_form.price.id_for_label }}" class="block mb-1 text-sm font-semibold text-gray-700">
+                السعر (ر.ي) <span class="text-red-500">*</span>
+              </label>
+              {{ product_form.price }}
+            </div>
+
+            <div>
+              <label for="{{ product_form.condition.id_for_label }}" class="block mb-1 text-sm font-semibold text-gray-700">
+                حالة المنتج <span class="text-red-500">*</span>
+              </label>
+              {{ product_form.condition }}
+            </div>
+          </div>
+
+          <div>
+            <label for="{{ product_form.initial_count.id_for_label }}" class="block mb-1 text-sm font-semibold text-gray-700">
+              الكمية المتوفرة الكلية <span class="text-red-500">*</span>
+            </label>
+            {% if is_superuser %}
+              {{ product_form.initial_count }}
+              <p class="text-[11px] text-gray-400 mt-1">بصفتك مدير نظام يمكنك إدخال وتعديل الكمية الكلية، وسيتم خصم مبيعات الفواتير منها تلقائياً لإظهار المتوفر الحقيقي.</p>
+            {% else %}
+              <input type="number" value="0" disabled class="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed">
+              <input type="hidden" name="initial_count" value="0">
+              <p class="text-[11px] text-amber-600 mt-1">تنبيه: تحديد الكمية متاح فقط لمدير النظام (Admin).</p>
+            {% endif %}
+          </div>
+
+          <div class="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+            <button type="button" id="cancel-product-modal-btn" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition">
+              إلغاء
+            </button>
+            <button type="submit" class="px-6 py-2 bg-[#1b313e] hover:bg-[#152631] text-white text-sm font-semibold rounded-lg shadow transition">
+              حفظ المنتج
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: EDIT PRODUCT (تعديل منتج مع التحقق والتأكيد وسجل التدقيق) -->
+    <div id="edit-product-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-100 transition-all">
+        <!-- Header -->
+        <div class="bg-[#1b313e] px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-2 text-white">
+            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+            </svg>
+            <h3 class="font-bold text-lg">تعديل بيانات المنتج</h3>
+          </div>
+          <button type="button" id="close-edit-modal-btn" class="text-gray-300 hover:text-white transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Form -->
+        <form method="post" id="edit-product-form" class="p-6 space-y-4">
+          {% csrf_token %}
+          
+          <div>
+            <label class="block mb-1 text-sm font-semibold text-gray-700">
+              اسم المنتج <span class="text-red-500">*</span>
+            </label>
+            <input type="text" name="name" id="edit-product-name" required
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b313e] outline-none transition">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block mb-1 text-sm font-semibold text-gray-700">
+                السعر (ر.ي) <span class="text-red-500">*</span>
+              </label>
+              <input type="number" name="price" id="edit-product-price" step="1" min="0" required
+                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b313e] outline-none transition font-mono">
+            </div>
+
+            <div>
+              <label class="block mb-1 text-sm font-semibold text-gray-700">
+                حالة المنتج <span class="text-red-500">*</span>
+              </label>
+              <select name="condition" id="edit-product-condition" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b313e] outline-none transition bg-white">
+                <option value="new">جديد</option>
+                <option value="used">مستخدم</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block mb-1 text-sm font-semibold text-gray-700">
+              الكمية الكلية المدخلة
+            </label>
+            {% if is_superuser %}
+              <input type="number" name="initial_count" id="edit-product-count" min="0"
+                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b313e] outline-none transition font-mono">
+              <p class="text-[11px] text-gray-400 mt-1">تعديلك للكمية الكلية سيغير المتوفر في المخزن مباشرة.</p>
+            {% else %}
+              <input type="number" id="edit-product-count" disabled
+                     class="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-500 font-mono cursor-not-allowed">
+              <p class="text-[11px] text-amber-600 mt-1">تعديل كمية المخزن مسموح لمدير النظام فقط.</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <label class="block mb-1 text-sm font-semibold text-gray-700">
+              سبب التعديل (لتوثيق التقرير بسجل التدقيق) <span class="text-red-500">*</span>
+            </label>
+            <input type="text" name="audit_reason" id="edit-product-reason" required placeholder="مثال: تصحيح سعر البيع، أو تحديث الكمية..."
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b313e] outline-none transition text-sm">
+          </div>
+
+          <div class="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs flex items-center gap-2">
+            <svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <span>سيتم حفظ التغييرات وتوثيق هوية المستخدم وتاريخ التعديل في تقرير سجل التدقيق (Audit Log).</span>
+          </div>
+
+          <div class="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+            <button type="button" id="cancel-edit-modal-btn" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition">
+              إلغاء
+            </button>
+            <button type="submit" class="px-6 py-2 bg-[#1b313e] hover:bg-[#152631] text-white text-sm font-semibold rounded-lg shadow transition">
+              تأكيد وحفظ التعديلات
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+
+    <!-- MODAL 2: CREATE BILL (انشاء فاتورة) -->
+    {% if can_create_any_bill %}
+    <div id="create-bill-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-gray-100 transition-all max-h-[90vh] flex flex-col">
+        <!-- Header -->
+        <div class="bg-[#1b313e] px-6 py-4 flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-2 text-white">
+            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <h3 id="bill-modal-title" class="font-bold text-lg">إنشاء فاتورة مبيعات (منتجات)</h3>
+          </div>
+          <button type="button" id="close-bill-modal-btn" class="text-gray-300 hover:text-white transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Form Body -->
+        <form method="post" action="{% url 'create_bill' %}" class="p-6 space-y-5 overflow-y-auto" id="bill-form">
+          {% csrf_token %}
+          <input type="hidden" name="bill_type" id="bill-type-input" value="sales">
+          
+          <!-- Client Information -->
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">بيانات العميل</h4>
+              <span id="client-found-badge" class="hidden text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                ✓ تم التعرف على العميل
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="relative">
+                <label class="block mb-1 text-xs font-semibold text-gray-700">رقم الهاتف <span class="text-red-500">*</span></label>
+                <input type="text" name="client_phone" id="client-phone-input" required placeholder="7XXXXXXXX" dir="ltr" autocomplete="off"
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b313e] focus:border-[#1b313e] outline-none font-mono">
+                
+                <!-- Client suggestions card dropdown -->
+                <div id="client-suggestions" 
+                     class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-30 max-h-48 overflow-y-auto hidden">
+                  <!-- Injected via JS -->
+                </div>
+              </div>
+
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-gray-700">اسم العميل <span class="text-red-500">*</span></label>
+                <input type="text" name="client_name" id="client-name-input" required placeholder="اسم العميل"
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b313e] focus:border-[#1b313e] outline-none">
+              </div>
+
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-gray-700">اسم الشبكة</label>
+                <input type="text" name="network_name" id="client-network-input" placeholder="اختياري"
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b313e] focus:border-[#1b313e] outline-none">
+              </div>
+            </div>
+          </div>
+
+          <!-- Section A: PRODUCTS SELECTION (Shown when bill_type == 'sales') -->
+          <div id="sales-bill-section" class="space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                اختيار المنتج المراد بيعه <span class="text-red-500">*</span>
+              </label>
+              <!-- Button to select from available products modal/dropdown -->
+              <button type="button" id="toggle-available-products-btn"
+                      class="text-xs font-semibold text-[#1b313e] hover:underline flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/>
+                </svg>
+                عرض قائمة المنتجات المتوفرة
+              </button>
+            </div>
+
+            <!-- Autocomplete input wrapper -->
+            <div class="relative">
+              <input type="text" id="product-search-input" autocomplete="off"
+                     placeholder="اكتب أول حروف من اسم المنتج للبحث التلقائي..."
+                     class="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1b313e] focus:border-[#1b313e] outline-none">
+              
+              <!-- Suggestions dropdown -->
+              <div id="product-suggestions" 
+                   class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-30 max-h-48 overflow-y-auto hidden">
+                <!-- Injected via JavaScript -->
+              </div>
+            </div>
+
+            <!-- Available Products Drawer/List (Toggled by button) -->
+            <div id="available-products-container" class="hidden bg-gray-50 border border-gray-200 rounded-xl p-3 max-h-40 overflow-y-auto space-y-1.5">
+              <p class="text-xs font-semibold text-gray-500 mb-2">اضغط على أي منتج متوفر لاختياره مباشرة:</p>
+              <div id="available-products-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+
+            <!-- Hidden input for selected product ID -->
+            <input type="hidden" name="product_id" id="selected-product-id">
+
+            <!-- Auto-populated read-only product details -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-gray-500">السعر الفردي</label>
+                <div id="display-product-price" class="px-3 py-2 text-sm bg-gray-100 border border-gray-200 rounded-lg text-gray-800 font-mono font-bold">
+                  —
+                </div>
+              </div>
+
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-gray-500">الحالة</label>
+                <div id="display-product-condition" class="px-3 py-2 text-sm bg-gray-100 border border-gray-200 rounded-lg text-gray-800 font-semibold">
+                  —
+                </div>
+              </div>
+
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-gray-700">الكمية المطلوبة</label>
+                <input type="number" name="quantity" id="bill-quantity" min="1" value="1"
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b313e] outline-none font-mono">
+              </div>
+            </div>
+
+            <!-- Stock Limit Warning Alert (under that product) -->
+            <div id="stock-warning-alert" class="hidden bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-xl text-xs flex items-center gap-2">
+              <svg class="w-5 h-5 text-rose-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+              <div>
+                <span class="font-bold">تنبيه الكمية:</span>
+                <span id="stock-warning-text">الكمية المدخلة أكبر من المتوفر في المخزن!</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section B: SERVICES DETAILS (Shown when bill_type == 'services') -->
+          <div id="services-bill-section" class="hidden space-y-4">
+            <div class="bg-purple-50/60 p-4 rounded-xl border border-purple-100 space-y-3">
+              <h4 class="text-xs font-bold text-purple-900 uppercase tracking-wider">تفاصيل الخدمة المقدمة</h4>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-gray-700">بيان الخدمة أو العمل المنجز <span class="text-red-500">*</span></label>
+                <input type="text" name="service_description" id="service-desc-input" placeholder="مثال: تركيب سيرفر مايكروتك وبرمجة الشبكة"
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-purple-600 outline-none">
+              </div>
+
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-gray-700">تكلفة الخدمة (ر.ي) <span class="text-red-500">*</span></label>
+                <input type="number" name="service_cost" id="service-cost-input" min="0" step="1" placeholder="0"
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-purple-600 outline-none font-mono">
+              </div>
+            </div>
+          </div>
+
+          <!-- Total Calculation preview -->
+          <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
+            <span class="text-sm font-bold text-emerald-900">إجمالي الفاتورة المتوقع:</span>
+            <span id="display-total-price" class="text-lg font-extrabold text-emerald-800 font-mono">0 ر.ي</span>
+          </div>
+
+          <!-- Submit & Cancel Buttons -->
+          <div class="pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
+            <button type="button" id="cancel-bill-modal-btn" class="px-5 py-2.5 text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+              <span>إلغاء الفاتورة</span>
+            </button>
+            <button type="submit" id="submit-bill-btn" disabled
+                    class="px-7 py-2.5 bg-[#1b313e] hover:bg-[#152631] text-white text-sm font-semibold rounded-xl shadow transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer">
+              <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span>تأكيد وحفظ الفاتورة</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- MODAL 3: VIEW & PRINT BILL (معاينة وطباعة الفاتورة) -->
+    <div id="view-bill-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-gray-100 transition-all">
+        <div class="bg-[#1b313e] px-6 py-4 flex items-center justify-between text-white">
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <h3 class="font-bold text-lg" id="viewer-bill-title">فاتورة #</h3>
+          </div>
+          <button type="button" onclick="closeBillViewer()" class="text-gray-300 hover:text-white">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <div id="printable-bill-area" class="p-6 space-y-4">
+          <!-- Header for print -->
+          <div class="border-b pb-4 text-center">
+            <h2 class="text-2xl font-bold text-[#1b313e]">سنتر بوينت كونكت • CPC ERP</h2>
+            <p class="text-xs text-gray-500 mt-1">فاتورة رسمية صادرة من النظام الداخلي</p>
+          </div>
+
+          <!-- Bill metadata -->
+          <div class="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div>
+              <p class="text-gray-500">رقم الفاتورة: <span id="v-bill-id" class="font-bold text-gray-800 font-mono"></span></p>
+              <p class="text-gray-500 mt-1">اسم العميل: <span id="v-bill-client" class="font-bold text-gray-800"></span></p>
+              <p class="text-gray-500 mt-1">اسم الشبكة: <span id="v-bill-network" class="font-bold text-gray-800"></span></p>
+            </div>
+            <div class="text-left" dir="ltr">
+              <p class="text-gray-500">Date: <span id="v-bill-date" class="font-mono text-gray-800 font-semibold"></span></p>
+              <p class="text-gray-500 mt-1">Phone: <span id="v-bill-phone" class="font-mono text-gray-800 font-semibold"></span></p>
+              <p class="text-gray-500 mt-1">Created By: <span id="v-bill-creator" class="font-semibold text-gray-800"></span></p>
+            </div>
+          </div>
+
+          <!-- Items Table -->
+          <div class="overflow-hidden border border-gray-200 rounded-xl">
+            <table class="w-full text-xs text-right">
+              <thead class="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th class="p-2.5">البند / البيان</th>
+                  <th class="p-2.5 text-center">الحالة</th>
+                  <th class="p-2.5 text-center">الكمية</th>
+                  <th class="p-2.5 text-left font-mono">السعر</th>
+                  <th class="p-2.5 text-left font-mono">الإجمالي</th>
+                </tr>
+              </thead>
+              <tbody id="v-bill-items" class="divide-y divide-gray-100">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Total -->
+          <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+            <span class="font-bold text-emerald-900 text-sm">المبلغ الإجمالي المستحق:</span>
+            <span id="v-bill-total" class="font-extrabold text-emerald-800 font-mono text-base"></span>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3">
+          <button type="button" onclick="closeBillViewer()" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg">
+            إغلاق
+          </button>
+          <button type="button" id="v-bill-print-btn" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold rounded-lg shadow flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+            </svg>
+            <span>طباعة الفاتورة</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pass backend products & clients data into JS -->
+    <script id="products-data" type="application/json">
+      {{ products_json|safe }}
+    </script>
+    <script id="clients-data" type="application/json">
+      {{ clients_json|safe }}
+    </script>
+
+    <script>
+      // Load products and clients dataset
+      const productsDataEl = document.getElementById('products-data');
+      let productsList = [];
+      if (productsDataEl) {
+        try {
+          productsList = JSON.parse(productsDataEl.textContent);
+        } catch (e) {
+          productsList = [];
+        }
+      }
+
+      const clientsDataEl = document.getElementById('clients-data');
+      let clientsList = [];
+      if (clientsDataEl) {
+        try {
+          clientsList = JSON.parse(clientsDataEl.textContent);
+        } catch (e) {
+          clientsList = [];
+        }
+      }
+
+      function formatNumberWithCommas(num) {
+        if (num === null || num === undefined) return '0';
+        const clean = typeof num === 'string' ? num.replace(/,/g, '').trim() : num;
+        const val = Number(clean);
+        if (isNaN(val)) return '0';
+        return Math.round(val).toLocaleString('en-US');
+      }
+
+      // 1. Add Product Modal Handlers
+      const productModal = document.getElementById('add-product-modal');
+      const openProductBtn = document.getElementById('open-product-modal-btn');
+      const closeProductBtn = document.getElementById('close-product-modal-btn');
+      const cancelProductBtn = document.getElementById('cancel-product-modal-btn');
+
+      if (openProductBtn) openProductBtn.addEventListener('click', () => productModal.classList.remove('hidden'));
+      if (closeProductBtn) closeProductBtn.addEventListener('click', () => productModal.classList.add('hidden'));
+      if (cancelProductBtn) cancelProductBtn.addEventListener('click', () => productModal.classList.add('hidden'));
+
+      // 2. Edit Product Modal Handlers with Confirmation
+      const editProductModal = document.getElementById('edit-product-modal');
+      const editProductForm = document.getElementById('edit-product-form');
+      const editNameInput = document.getElementById('edit-product-name');
+      const editPriceInput = document.getElementById('edit-product-price');
+      const editConditionSelect = document.getElementById('edit-product-condition');
+      const editCountInput = document.getElementById('edit-product-count');
+      const editReasonInput = document.getElementById('edit-product-reason');
+      const closeEditModalBtn = document.getElementById('close-edit-modal-btn');
+      const cancelEditModalBtn = document.getElementById('cancel-edit-modal-btn');
+
+      function openEditProductModal(id, name, price, condition, initialCount, available) {
+        if (!editProductModal) return;
+        editProductForm.action = `/portal/edit-product/${id}/`;
+        editNameInput.value = name;
+        editPriceInput.value = Math.round(price);
+        editConditionSelect.value = condition;
+        if (editCountInput) editCountInput.value = initialCount;
+        if (editReasonInput) editReasonInput.value = '';
+        editProductModal.classList.remove('hidden');
+      }
+
+      function closeEditProductModal() {
+        if (editProductModal) editProductModal.classList.add('hidden');
+      }
+
+      if (closeEditModalBtn) closeEditModalBtn.addEventListener('click', closeEditProductModal);
+      if (cancelEditModalBtn) cancelEditModalBtn.addEventListener('click', closeEditProductModal);
+
+      if (editProductForm) {
+        editProductForm.addEventListener('submit', (e) => {
+          const name = editNameInput.value;
+          const price = editPriceInput.value;
+          const ok = confirm(`هل أنت متأكد من حفظ التعديلات الجديدة على المنتج "${name}"؟\nالسعر الجديد: ${formatNumberWithCommas(price)} ر.ي\nسيتم تسجيل هذا الإجراء باسمك في سجل التدقيق.`);
+          if (!ok) {
+            e.preventDefault();
+          }
+        });
+      }
+
+      // 3. Filter & Search in Sales Tab
+      const salesSearch = document.getElementById('sales-search-input');
+      const filterCondition = document.getElementById('sales-filter-condition');
+      const filterAvail = document.getElementById('sales-filter-avail');
+
+      function filterSalesCards() {
+        const query = salesSearch ? salesSearch.value.trim().toLowerCase() : '';
+        const cond = filterCondition ? filterCondition.value : 'all';
+        const avail = filterAvail ? filterAvail.value : 'all';
+
+        const cards = document.querySelectorAll('.product-card');
+        cards.forEach(card => {
+          const name = card.getAttribute('data-name') || '';
+          const cardCond = card.getAttribute('data-condition') || '';
+          const cardAvail = parseInt(card.getAttribute('data-available')) || 0;
+
+          let matchesQuery = !query || name.includes(query);
+          let matchesCond = (cond === 'all') || (cardCond === cond);
+          let matchesAvail = true;
+          if (avail === 'available') matchesAvail = (cardAvail > 0);
+          if (avail === 'out') matchesAvail = (cardAvail === 0);
+
+          if (matchesQuery && matchesCond && matchesAvail) {
+            card.classList.remove('hidden');
+          } else {
+            card.classList.add('hidden');
+          }
+        });
+      }
+
+      if (salesSearch) salesSearch.addEventListener('input', filterSalesCards);
+      if (filterCondition) filterCondition.addEventListener('change', filterSalesCards);
+      if (filterAvail) filterAvail.addEventListener('change', filterSalesCards);
+
+      // 4. Search in Bills Tab
+      const billsSearch = document.getElementById('bills-search-input');
+      if (billsSearch) {
+        billsSearch.addEventListener('input', (e) => {
+          const q = e.target.value.trim().toLowerCase();
+          const rows = document.querySelectorAll('.bill-row');
+          rows.forEach(r => {
+            const data = (r.getAttribute('data-search') || '').toLowerCase();
+            if (!q || data.includes(q)) {
+              r.classList.remove('hidden');
+            } else {
+              r.classList.add('hidden');
+            }
+          });
+        });
+      }
+
+      // 5. Create Bill Modal Handlers
+      const billModal = document.getElementById('create-bill-modal');
+      const openBillBtn = document.getElementById('open-bill-modal-btn');
+      const openServiceBillBtn = document.getElementById('open-service-bill-btn');
+      const closeBillBtn = document.getElementById('close-bill-modal-btn');
+      const cancelBillBtn = document.getElementById('cancel-bill-modal-btn');
+
+      const billModalTitle = document.getElementById('bill-modal-title');
+      const billTypeInput = document.getElementById('bill-type-input');
+      const salesBillSection = document.getElementById('sales-bill-section');
+      const servicesBillSection = document.getElementById('services-bill-section');
+      const serviceDescInput = document.getElementById('service-desc-input');
+      const serviceCostInput = document.getElementById('service-cost-input');
+
+      const clientPhoneInput = document.getElementById('client-phone-input');
+      const clientNameInput = document.getElementById('client-name-input');
+      const clientNetworkInput = document.getElementById('client-network-input');
+      const clientSuggestions = document.getElementById('client-suggestions');
+      const clientFoundBadge = document.getElementById('client-found-badge');
+
+      const stockWarningAlert = document.getElementById('stock-warning-alert');
+      const stockWarningText = document.getElementById('stock-warning-text');
+
+      function resetBillForm() {
+        const billForm = document.getElementById('bill-form');
+        if (billForm) billForm.reset();
+        selectedIdInput.value = '';
+        currentSelectedPrice = 0;
+        currentSelectedAvailable = 0;
+        displayPrice.textContent = '—';
+        displayCondition.textContent = '—';
+        displayTotal.textContent = '0 ر.ي';
+        if (submitBillBtn) submitBillBtn.disabled = true;
+        if (suggestionsBox) suggestionsBox.classList.add('hidden');
+        if (clientSuggestions) clientSuggestions.classList.add('hidden');
+        if (clientFoundBadge) clientFoundBadge.classList.add('hidden');
+        if (stockWarningAlert) stockWarningAlert.classList.add('hidden');
+        if (availableContainer) availableContainer.classList.add('hidden');
+      }
+
+      function setupBillModalMode(mode) {
+        if (mode === 'services') {
+          if (billTypeInput) billTypeInput.value = 'services';
+          if (billModalTitle) billModalTitle.textContent = 'إنشاء فاتورة خدمات أو صيانة';
+          if (salesBillSection) salesBillSection.classList.add('hidden');
+          if (servicesBillSection) servicesBillSection.classList.remove('hidden');
+          if (selectedIdInput) selectedIdInput.removeAttribute('required');
+          if (serviceDescInput) serviceDescInput.setAttribute('required', 'required');
+          if (submitBillBtn) submitBillBtn.disabled = false;
+        } else {
+          if (billTypeInput) billTypeInput.value = 'sales';
+          if (billModalTitle) billModalTitle.textContent = 'إنشاء فاتورة مبيعات (منتجات)';
+          if (salesBillSection) salesBillSection.classList.remove('hidden');
+          if (servicesBillSection) servicesBillSection.classList.add('hidden');
+          if (selectedIdInput) selectedIdInput.setAttribute('required', 'required');
+          if (serviceDescInput) serviceDescInput.removeAttribute('required');
+          if (submitBillBtn && !selectedIdInput.value) submitBillBtn.disabled = true;
+        }
+      }
+
+      const canCreateSalesBill = {{ can_create_sales_bill|yesno:"true,false" }};
+      const canCreateServicesBill = {{ can_create_services_bill|yesno:"true,false" }};
+
+      function openBillModal(mode = '{{ active_tab }}') {
+        if (!billModal) return;
+        const targetMode = mode === 'services' ? 'services' : 'sales';
+        if (targetMode === 'sales' && !canCreateSalesBill) {
+          alert('ليس لديك صلاحية لإنشاء فواتير المبيعات أو أن قسم المنتجات مقفل.');
+          return;
+        }
+        if (targetMode === 'services' && !canCreateServicesBill) {
+          alert('ليس لديك صلاحية لإنشاء فواتير الخدمات أو أن قسم الخدمات مقفل.');
+          return;
+        }
+        setupBillModalMode(targetMode);
+        billModal.classList.remove('hidden');
+      }
+
+      function closeBillModal() {
+        if (billModal) {
+          billModal.classList.add('hidden');
+          resetBillForm();
+        }
+      }
+
+      if (openBillBtn) openBillBtn.addEventListener('click', () => openBillModal());
+      if (openServiceBillBtn) openServiceBillBtn.addEventListener('click', () => openBillModal('services'));
+      if (closeBillBtn) closeBillBtn.addEventListener('click', closeBillModal);
+      if (cancelBillBtn) cancelBillBtn.addEventListener('click', closeBillModal);
+
+      if (serviceCostInput) {
+        serviceCostInput.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value) || 0;
+          if (displayTotal) displayTotal.textContent = `${formatNumberWithCommas(val)} ر.ي`;
+        });
+      }
+
+      // Client phone autocomplete and autofill
+      if (clientPhoneInput) {
+        clientPhoneInput.addEventListener('input', (e) => {
+          const val = e.target.value.trim();
+          if (!val || val.length < 2) {
+            clientSuggestions.innerHTML = '';
+            clientSuggestions.classList.add('hidden');
+            if (clientFoundBadge) clientFoundBadge.classList.add('hidden');
+            return;
+          }
+
+          const matchedClients = clientsList.filter(c => c.phone.includes(val));
+          if (matchedClients.length === 0) {
+            clientSuggestions.innerHTML = '';
+            clientSuggestions.classList.add('hidden');
+            if (clientFoundBadge) clientFoundBadge.classList.add('hidden');
+            return;
+          }
+
+          const exact = matchedClients.find(c => c.phone === val);
+          if (exact) {
+            fillClientData(exact.name, exact.phone, exact.network_name);
+            clientSuggestions.classList.add('hidden');
+            return;
+          }
+
+          clientSuggestions.innerHTML = matchedClients.map(c => `
+            <div class="p-3 hover:bg-slate-50 cursor-pointer border-b border-gray-100 flex items-center justify-between text-xs transition"
+                 onclick="selectClient('${escapeHtml(c.name)}', '${escapeHtml(c.phone)}', '${escapeHtml(c.network_name)}')">
+              <div>
+                <p class="font-bold text-gray-800 text-sm">${escapeHtml(c.name)}</p>
+                <p class="text-gray-400 font-mono mt-0.5" dir="ltr">${escapeHtml(c.phone)}</p>
+              </div>
+              <div class="text-left">
+                <span class="inline-block bg-slate-100 text-gray-600 px-2 py-0.5 rounded text-[11px]">
+                  ${c.network_name ? escapeHtml(c.network_name) : 'عميل مسجل'}
+                </span>
+              </div>
+            </div>
+          `).join('');
+
+          clientSuggestions.classList.remove('hidden');
+        });
+      }
+
+      function fillClientData(name, phone, network) {
+        if (clientNameInput) clientNameInput.value = name;
+        if (clientPhoneInput) clientPhoneInput.value = phone;
+        if (clientNetworkInput) clientNetworkInput.value = network || '';
+        if (clientFoundBadge) clientFoundBadge.classList.remove('hidden');
+      }
+
+      function selectClient(name, phone, network) {
+        fillClientData(name, phone, network);
+        if (clientSuggestions) clientSuggestions.classList.add('hidden');
+      }
+
+      // Function called from Sales card "انشاء فاتورة"
+      function openBillModalWithProduct(id, name, price, condition) {
+        if (!canCreateSalesBill) {
+          alert('ليس لديك صلاحية لإنشاء فواتير المبيعات أو أن قسم المنتجات مقفل.');
+          return;
+        }
+        const pObj = productsList.find(p => p.id === id);
+        const avail = pObj ? pObj.available : 0;
+        if (avail <= 0) {
+          alert('هذا المنتج غير متوفر حالياً بالمخزن ولا يمكن إنشاء فاتورة له.');
+          return;
+        }
+        openBillModal('sales');
+        selectProduct(id, name, price, condition, avail);
+      }
+
+      // 6. Product Autocomplete & Selection Logic
+      const searchInput = document.getElementById('product-search-input');
+      const suggestionsBox = document.getElementById('product-suggestions');
+      const selectedIdInput = document.getElementById('selected-product-id');
+      const displayPrice = document.getElementById('display-product-price');
+      const displayCondition = document.getElementById('display-product-condition');
+      const displayTotal = document.getElementById('display-total-price');
+      const quantityInput = document.getElementById('bill-quantity');
+      const submitBillBtn = document.getElementById('submit-bill-btn');
+
+      let currentSelectedPrice = 0;
+      let currentSelectedAvailable = 0;
+
+      function validateStockAndCalculate() {
+        const qty = parseInt(quantityInput.value) || 0;
+        
+        if (!selectedIdInput.value) {
+          if (submitBillBtn) submitBillBtn.disabled = true;
+          return;
+        }
+
+        if (currentSelectedAvailable <= 0) {
+          if (stockWarningAlert) {
+            stockWarningText.textContent = `هذا المنتج غير متوفر حالياً في المخزن (نفدت الكمية). لا يمكن إنشاء فاتورة له!`;
+            stockWarningAlert.classList.remove('hidden');
+          }
+          if (submitBillBtn) submitBillBtn.disabled = true;
+          if (displayTotal) displayTotal.textContent = '0 ر.ي';
+          return;
+        }
+
+        if (qty > currentSelectedAvailable) {
+          if (stockWarningAlert) {
+            stockWarningText.textContent = `الكمية المدخلة (${qty}) تتجاوز الكمية المتوفرة في المخزن (${currentSelectedAvailable} قطعة)!`;
+            stockWarningAlert.classList.remove('hidden');
+          }
+          if (submitBillBtn) submitBillBtn.disabled = true;
+        } else if (qty <= 0) {
+          if (stockWarningAlert) {
+            stockWarningText.textContent = `يرجى إدخال كمية صحيحة (1 أو أكثر).`;
+            stockWarningAlert.classList.remove('hidden');
+          }
+          if (submitBillBtn) submitBillBtn.disabled = true;
+        } else {
+          if (stockWarningAlert) stockWarningAlert.classList.add('hidden');
+          if (submitBillBtn && selectedIdInput.value) submitBillBtn.disabled = false;
+        }
+
+        const total = currentSelectedPrice * (qty > 0 ? qty : 0);
+        if (displayTotal) displayTotal.textContent = `${formatNumberWithCommas(total)} ر.ي`;
+      }
+
+      if (quantityInput) {
+        quantityInput.addEventListener('input', validateStockAndCalculate);
+      }
+
+      function selectProduct(id, name, price, conditionDisplay, available) {
+        selectedIdInput.value = id;
+        searchInput.value = name;
+        currentSelectedPrice = price;
+        currentSelectedAvailable = (available !== undefined) ? available : 0;
+        displayPrice.textContent = `${formatNumberWithCommas(price)} ر.ي`;
+        displayCondition.textContent = conditionDisplay;
+        suggestionsBox.classList.add('hidden');
+        validateStockAndCalculate();
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const query = e.target.value.trim().toLowerCase();
+          if (!query) {
+            suggestionsBox.innerHTML = '';
+            suggestionsBox.classList.add('hidden');
+            return;
+          }
+
+          const filtered = productsList.filter(p => p.name.toLowerCase().includes(query) && p.available > 0);
+          if (filtered.length === 0) {
+            suggestionsBox.innerHTML = '<div class="p-3 text-xs text-gray-400 text-center">لا توجد منتجات مطابقة أو متوفرة</div>';
+            suggestionsBox.classList.remove('hidden');
+            return;
+          }
+
+          suggestionsBox.innerHTML = filtered.map(p => `
+            <div class="p-3 hover:bg-slate-50 cursor-pointer border-b border-gray-100 flex items-center justify-between text-sm"
+                 onclick="selectProduct(${p.id}, '${escapeHtml(p.name)}', ${p.price}, '${escapeHtml(p.condition_display)}', ${p.available})">
+              <div>
+                <span class="font-bold text-gray-800">${escapeHtml(p.name)}</span>
+                <span class="text-xs text-gray-400 mr-2">(${escapeHtml(p.condition_display)})</span>
+              </div>
+              <div class="text-left font-mono">
+                <span class="text-emerald-700 font-bold">${formatNumberWithCommas(p.price)} ر.ي</span>
+                <span class="text-xs text-gray-400 block">المتوفر: ${p.available}</span>
+              </div>
+            </div>
+          `).join('');
+
+          suggestionsBox.classList.remove('hidden');
+        });
+      }
+
+      const toggleAvailableBtn = document.getElementById('toggle-available-products-btn');
+      const availableContainer = document.getElementById('available-products-container');
+      const availableList = document.getElementById('available-products-list');
+
+      if (toggleAvailableBtn && availableContainer && availableList) {
+        toggleAvailableBtn.addEventListener('click', () => {
+          const isHidden = availableContainer.classList.contains('hidden');
+          if (isHidden) {
+            const availableOnly = productsList.filter(p => p.available > 0);
+            if (availableOnly.length === 0) {
+              availableList.innerHTML = '<p class="text-xs text-gray-400 col-span-2">لا توجد منتجات متوفرة حالياً بالمخزن.</p>';
+            } else {
+              availableList.innerHTML = availableOnly.map(p => `
+                <div class="bg-white p-2.5 rounded-lg border border-gray-200 hover:border-[#1b313e] cursor-pointer transition flex items-center justify-between text-xs"
+                     onclick="selectProduct(${p.id}, '${escapeHtml(p.name)}', ${p.price}, '${escapeHtml(p.condition_display)}', ${p.available})">
+                  <span class="font-bold text-gray-800 truncate">${escapeHtml(p.name)}</span>
+                  <div class="text-left font-mono shrink-0">
+                    <span class="text-emerald-700 font-bold">${formatNumberWithCommas(p.price)} ر.ي</span>
+                    <span class="text-[10px] text-gray-400 block">متوفر: ${p.available}</span>
+                  </div>
+                </div>
+              `).join('');
+            }
+            availableContainer.classList.remove('hidden');
+          } else {
+            availableContainer.classList.add('hidden');
+          }
+        });
+      }
+
+      // 7. Bill Viewer & Print Handlers
+      const viewBillModal = document.getElementById('view-bill-modal');
+      const viewerTitle = document.getElementById('viewer-bill-title');
+      const vBillId = document.getElementById('v-bill-id');
+      const vBillClient = document.getElementById('v-bill-client');
+      const vBillNetwork = document.getElementById('v-bill-network');
+      const vBillDate = document.getElementById('v-bill-date');
+      const vBillPhone = document.getElementById('v-bill-phone');
+      const vBillCreator = document.getElementById('v-bill-creator');
+      const vBillItems = document.getElementById('v-bill-items');
+      const vBillTotal = document.getElementById('v-bill-total');
+      const vBillPrintBtn = document.getElementById('v-bill-print-btn');
+
+      let currentViewingBillId = null;
+
+      function openBillViewer(billId) {
+        currentViewingBillId = billId;
+        fetch(`/portal/bill-json/${billId}/`)
+          .then(res => res.json())
+          .then(data => {
+            viewerTitle.textContent = `فاتورة رقم #${data.id}`;
+            vBillId.textContent = `#${data.id}`;
+            vBillClient.textContent = data.client_name;
+            vBillNetwork.textContent = data.network_name;
+            vBillDate.textContent = data.created_at;
+            vBillPhone.textContent = data.client_phone;
+            vBillCreator.textContent = data.created_by;
+            vBillTotal.textContent = `${formatNumberWithCommas(data.total_amount)} ر.ي`;
+
+            vBillItems.innerHTML = data.items.map(it => `
+              <tr class="hover:bg-slate-50">
+                <td class="p-2.5 font-semibold text-gray-800">${escapeHtml(it.name)}</td>
+                <td class="p-2.5 text-center text-gray-500">${escapeHtml(it.condition)}</td>
+                <td class="p-2.5 text-center font-mono font-bold">${it.quantity}</td>
+                <td class="p-2.5 text-left font-mono">${formatNumberWithCommas(it.price)} ر.ي</td>
+                <td class="p-2.5 text-left font-mono font-bold text-emerald-800">${formatNumberWithCommas(it.total)} ر.ي</td>
+              </tr>
+            `).join('');
+
+            viewBillModal.classList.remove('hidden');
+          })
+          .catch(() => alert('تعذر تحميل بيانات الفاتورة'));
+      }
+
+      function closeBillViewer() {
+        if (viewBillModal) viewBillModal.classList.add('hidden');
+      }
+
+      function printBillDirect(billId) {
+        fetch(`/portal/bill-json/${billId}/`)
+          .then(res => res.json())
+          .then(data => {
+            const printWindow = window.open('', '_blank');
+            const itemsHtml = data.items.map(it => `
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${escapeHtml(it.name)}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${escapeHtml(it.condition)}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${it.quantity}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left; font-family: monospace;">${formatNumberWithCommas(it.price)} ر.ي</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left; font-family: monospace; font-weight: bold;">${formatNumberWithCommas(it.total)} ر.ي</td>
+              </tr>
+            `).join('');
+
+            printWindow.document.write(`
+              <!DOCTYPE html>
+              <html lang="ar" dir="rtl">
+              <head>
+                <meta charset="UTF-8">
+                <title>فاتورة #${data.id}</title>
+                <style>
+                  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #1b313e; }
+                  .header { text-align: center; border-bottom: 2px solid #1b313e; padding-bottom: 12px; margin-bottom: 20px; }
+                  .meta-table { width: 100%; margin-bottom: 20px; font-size: 13px; }
+                  .meta-table td { padding: 4px; }
+                  table.items { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
+                  table.items th { background-color: #f1f5f9; padding: 8px; border-bottom: 2px solid #cbd5e1; text-align: right; }
+                  .total-box { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; font-size: 16px; font-weight: bold; text-align: left; }
+                  @media print { body { padding: 0; } }
+                </style>
+              </head>
+              <body>
+                <div class="header">
+                  <h1 style="margin: 0; font-size: 24px;">سنتر بوينت كونكت • CPC ERP</h1>
+                  <p style="margin: 4px 0 0; font-size: 13px; color: #64748b;">فاتورة بيع رسمية</p>
+                </div>
+                <table class="meta-table">
+                  <tr>
+                    <td><strong>رقم الفاتورة:</strong> #${data.id}</td>
+                    <td style="text-align: left;"><strong>التاريخ:</strong> ${data.created_at}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>اسم العميل:</strong> ${escapeHtml(data.client_name)}</td>
+                    <td style="text-align: left;"><strong>رقم الهاتف:</strong> ${data.client_phone}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>اسم الشبكة:</strong> ${escapeHtml(data.network_name)}</td>
+                    <td style="text-align: left;"><strong>أنشئت بواسطة:</strong> ${escapeHtml(data.created_by)}</td>
+                  </tr>
+                </table>
+                <table class="items">
+                  <thead>
+                    <tr>
+                      <th>البيان / المنتج</th>
+                      <th style="text-align: center;">الحالة</th>
+                      <th style="text-align: center;">الكمية</th>
+                      <th style="text-align: left;">السعر</th>
+                      <th style="text-align: left;">الإجمالي</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${itemsHtml}
+                  </tbody>
+                </table>
+                <div class="total-box">
+                  المبلغ الإجمالي المستحق: ${formatNumberWithCommas(data.total_amount)} ر.ي
+                </div>
+                <script>
+                  window.onload = function() { window.print(); window.close(); }
+                <\/script>
+              </body>
+              </html>
+            `);
+            printWindow.document.close();
+          })
+          .catch(() => alert('تعذر إرسال الفاتورة للطباعة'));
+      }
+
+      if (vBillPrintBtn) {
+        vBillPrintBtn.addEventListener('click', () => {
+          if (currentViewingBillId) printBillDirect(currentViewingBillId);
+        });
+      }
+
+      function escapeHtml(text) {
+        if (!text) return '';
+        return String(text)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      // Close modal on click outside
+      [productModal, editProductModal, billModal, viewBillModal].forEach(modal => {
+        if (modal) {
+          modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.add('hidden');
+          });
+        }
+      });
+    </script>
+  </body>
+</html>
