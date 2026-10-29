@@ -42,8 +42,8 @@ class UsersAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'price', 'initial_count', 'available_count', 'sold_count', 'condition', 'created_at')
-    list_filter = ('condition', 'created_at')
+    list_display = ('name', 'price', 'initial_count', 'available_count', 'sold_count', 'condition', 'is_active', 'created_at')
+    list_filter = ('is_active', 'condition', 'created_at')
     search_fields = ('name',)
 
 
@@ -54,8 +54,8 @@ class BillItemInline(admin.TabularInline):
 
 @admin.register(Bill)
 class BillAdmin(admin.ModelAdmin):
-    list_display = ('id', 'client', 'total_amount', 'created_by', 'created_at')
-    list_filter = ('created_at', 'created_by')
+    list_display = ('id', 'bill_type', 'client', 'total_amount', 'created_by', 'created_at')
+    list_filter = ('bill_type', 'created_at', 'created_by')
     search_fields = ('client__name', 'client__phone', 'id')
     inlines = [BillItemInline]
 
@@ -68,8 +68,8 @@ class ClientAdmin(admin.ModelAdmin):
 
 @admin.register(ProductAuditLog)
 class ProductAuditLogAdmin(admin.ModelAdmin):
-    list_display = ('product_name', 'user_name', 'changes', 'reason', 'created_at')
-    list_filter = ('created_at', 'user')
+    list_display = ('product_name', 'action_type', 'user_name', 'changes', 'reason', 'created_at')
+    list_filter = ('action_type', 'created_at', 'user')
     search_fields = ('product_name', 'user_name', 'changes')
-    readonly_fields = ('product', 'product_name', 'user', 'user_name', 'changes', 'reason', 'created_at')
+    readonly_fields = ('product', 'product_name', 'action_type', 'user', 'user_name', 'changes', 'reason', 'created_at')
 

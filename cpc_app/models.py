@@ -122,6 +122,7 @@ class Product(models.Model):
         default=ProductCondition.NEW,
         verbose_name="حالة المنتج"
     )
+    is_active = models.BooleanField(default=True, verbose_name="حالة التفعيل")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ الإضافة")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="تاريخ التحديث")
 
@@ -133,8 +134,9 @@ class Product(models.Model):
 
     @property
     def sold_count(self):
-        total = self.bill_items.aggregate(models.Sum('quantity'))['quantity__sum']
-        return total or 0
+        sales_sold = self.bill_items.filter(bill__bill_type='sales').aggregate(models.Sum('quantity'))['quantity__sum'] or 0
+        refunded = self.bill_items.filter(bill__bill_type='refund').aggregate(models.Sum('quantity'))['quantity__sum'] or 0
+        return max(0, sales_sold - refunded)
 
     @property
     def available_count(self):
@@ -174,6 +176,17 @@ class Bill(models.Model):
         null=True,
         related_name='created_bills',
         verbose_name="أنشئت بواسطة"
+    )
+    BILL_TYPES = [
+        ('sales', 'فاتورة مبيعات'),
+        ('services', 'فاتورة خدمات'),
+        ('refund', 'فاتورة مرتجع'),
+    ]
+    bill_type = models.CharField(
+        max_length=20,
+        choices=BILL_TYPES,
+        default='sales',
+        verbose_name="نوع الفاتورة"
     )
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="المبلغ الإجمالي")
     notes = models.TextField(blank=True, verbose_name="ملاحظات")
@@ -229,7 +242,9 @@ class BillItem(models.Model):
 class ProductAuditLog(models.Model):
     product = models.ForeignKey(
         Product,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='audit_logs',
         verbose_name="المنتج"
     )
@@ -241,6 +256,17 @@ class ProductAuditLog(models.Model):
         verbose_name="المستخدم الذي قام بالتعديل"
     )
     user_name = models.CharField(max_length=100, verbose_name="اسم المستخدم")
+    ACTION_TYPES = [
+        ('edit', 'تعديل بيانات'),
+        ('restock', 'توريد كمية جديدة'),
+        ('refund', 'مرتجع مبيعات'),
+    ]
+    action_type = models.CharField(
+        max_length=50,
+        choices=ACTION_TYPES,
+        default='edit',
+        verbose_name="نوع العملية"
+    )
     changes = models.TextField(verbose_name="تفاصيل التعديلات")
     reason = models.CharField(max_length=255, blank=True, verbose_name="سبب التعديل")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ ووقت التعديل")

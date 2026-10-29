@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db import transaction
+from django.utils import timezone
 from .forms import LoginForm, UserCreateForm, ProductForm
 from .models import Users, TabPermission, Product, Client, Bill, BillItem, ProductAuditLog
 
@@ -105,9 +106,9 @@ def dashboard_view(request):
     can_create_services_bill = user.is_superuser or (services_perm == 'all' and bills_perm == 'all')
     can_create_any_bill = can_create_sales_bill or can_create_services_bill
 
-    # Data for Sales Tab - sort available first, out of stock (available == 0) last
+    # Data for Sales Tab - sort active & available first, out of stock second, inactive last
     raw_products = list(Product.objects.all().order_by('-created_at'))
-    products = sorted(raw_products, key=lambda p: 1 if p.available_count == 0 else 0)
+    products = sorted(raw_products, key=lambda p: (0 if p.is_active else 2, 1 if p.available_count == 0 else 0))
     product_form = ProductForm()
 
     # Data for Bills Tab
@@ -123,6 +124,7 @@ def dashboard_view(request):
             'available': p.available_count,
             'condition': p.condition,
             'condition_display': p.get_condition_display(),
+            'is_active': p.is_active,
         }
         for p in products
     ]
@@ -137,6 +139,16 @@ def dashboard_view(request):
         }
         for c in clients
     ]
+
+    # Data for Reports Tab
+    audit_logs = ProductAuditLog.objects.select_related('product', 'user').order_by('-created_at')
+    report_stats = {
+        'total_logs': audit_logs.count(),
+        'restock_logs': audit_logs.filter(action_type='restock').count(),
+        'edit_logs': audit_logs.filter(action_type='edit').count(),
+        'refund_logs': audit_logs.filter(action_type='refund').count(),
+        'total_bills': bills.count(),
+    }
 
     context = {
         'user': user,
@@ -155,6 +167,8 @@ def dashboard_view(request):
         'product_form': product_form,
         'bills': bills,
         'clients': clients,
+        'audit_logs': audit_logs,
+        'report_stats': report_stats,
         'products_json': json.dumps(products_data, ensure_ascii=False),
         'clients_json': json.dumps(clients_data, ensure_ascii=False),
     }
@@ -203,36 +217,60 @@ def edit_product_view(request, product_id):
     product = get_object_or_404(Product, id=product_id)
 
     if request.method == 'POST':
-        name = request.POST.get('name', '').strip()
+        name = request.POST.get('name', '').strip() or product.name
         price_str = request.POST.get('price', '').strip()
-        condition = request.POST.get('condition', '').strip()
+        condition = request.POST.get('condition', '').strip() or product.condition
         initial_count_str = request.POST.get('initial_count', '').strip()
+        add_quantity_str = request.POST.get('add_quantity', '0').strip()
         reason = request.POST.get('audit_reason', '').strip()
-
-        if not name:
-            messages.error(request, 'اسم المنتج مطلوب.')
-            return redirect('/portal/?tab=sales')
+        
+        # Check active status toggle switch
+        is_active_val = request.POST.get('is_active')
+        new_is_active = bool(is_active_val)
 
         # Check unique name excluding this product
-        if Product.objects.filter(name__iexact=name).exclude(id=product.id).exists():
-            messages.error(request, f'الاسم "{name}" مسجل مسبقاً لمنتج آخر.')
-            return redirect('/portal/?tab=sales')
+        if name and name != product.name:
+            if Product.objects.filter(name__iexact=name).exclude(id=product.id).exists():
+                messages.error(request, f'الاسم "{name}" مسجل مسبقاً لمنتج آخر.')
+                return redirect('/portal/?tab=sales')
 
         try:
-            new_price = Decimal(price_str)
+            new_price = Decimal(price_str) if price_str else product.price
         except Exception:
             new_price = product.price
 
         changes_list = []
+        action_type = 'edit'
+
         if name != product.name:
             changes_list.append(f"الاسم: من '{product.name}' إلى '{name}'")
         if new_price != product.price:
             changes_list.append(f"السعر: من '{product.price}' إلى '{new_price}'")
         if condition and condition != product.condition:
             changes_list.append(f"الحالة: من '{product.get_condition_display()}' إلى '{condition}'")
+        if new_is_active != product.is_active:
+            status_desc = "تفعيل المنتج" if new_is_active else "إيقاف المنتج مؤقتاً"
+            changes_list.append(f"حالة التفعيل: {status_desc}")
 
-        # Edit count - allow admin, or user if allowed
-        if user.is_superuser and initial_count_str:
+        # Handle adding new quantity (accessible to all with product edit permission)
+        add_quantity = 0
+        if add_quantity_str:
+            try:
+                add_quantity = int(add_quantity_str)
+                if add_quantity < 0:
+                    add_quantity = 0
+            except ValueError:
+                add_quantity = 0
+
+        if add_quantity > 0:
+            old_initial = product.initial_count
+            product.initial_count += add_quantity
+            changes_list.append(f"إضافة كمية واردة للمخزون: +{add_quantity} قطعة (الكمية الكلية من {old_initial} إلى {product.initial_count} قطعة)")
+            if not any(k in changes_list[0] for k in ["الاسم", "السعر", "الحالة", "حالة التفعيل"]):
+                action_type = 'restock'
+
+        # Edit count directly - allow superuser only
+        if user.is_superuser and initial_count_str and add_quantity == 0:
             try:
                 new_count = int(initial_count_str)
                 if new_count != product.initial_count:
@@ -248,20 +286,75 @@ def edit_product_view(request, product_id):
             product.price = new_price
             if condition:
                 product.condition = condition
+            product.is_active = new_is_active
             product.save()
 
-            # Record audit log
+            # Record audit log - auto-generate reason if user left it blank
+            if not reason:
+                if action_type == 'restock':
+                    reason = f"توريد كمية واردة جديدة للمخزون (+{add_quantity} قطعة)"
+                elif new_is_active != product.is_active and len(changes_list) == 1:
+                    reason = "تغيير حالة تفعيل المنتج"
+                else:
+                    reason = "تعديل بيانات المنتج"
+
             ProductAuditLog.objects.create(
                 product=product,
                 product_name=product.name,
+                action_type=action_type,
                 user=user,
                 user_name=user.full_name,
                 changes=changes_text,
-                reason=reason or "تعديل بيانات المنتج",
+                reason=reason,
             )
-            messages.success(request, f'تم تعديل المنتج "{product.name}" بنجاح وتسجيل التغييرات في سجل التدقيق.')
+            messages.success(request, f'تم تحديث المنتج "{product.name}" بنجاح وتوثيق العملية في سجل التقارير.')
         else:
             messages.info(request, 'لم يتم إجراء أي تغييرات على المنتج.')
+
+    return redirect('/portal/?tab=sales')
+
+
+@login_required_custom
+def delete_product_view(request, product_id):
+    user = Users.objects.filter(id=request.session['user_id']).first()
+    if not user:
+        return redirect('login')
+
+    sales_perm = user.get_tab_permission_level('sales')
+    if sales_perm != 'all' or not user.can_edit_products():
+        messages.error(request, 'ليس لديك صلاحية حذف المنتجات.')
+        return redirect('/portal/?tab=sales')
+
+    product = get_object_or_404(Product, id=product_id)
+
+    if request.method == 'POST':
+        product_name = product.name
+        # Prevent deletion if the product has bill items
+        if product.bill_items.exists():
+            messages.error(
+                request,
+                f'تعذر حذف المنتج "{product_name}" لوجود فواتير بيع سابقة مسجلة به. يمكنك بدلاً من ذلك إيقاف تفعيل المنتج من خيار (إيقاف المنتج) لإيقاف بيعه مع الحفاظ على سجل الفواتير.'
+            )
+            return redirect('/portal/?tab=sales')
+
+        try:
+            # Dissociate from audit logs so logs remain for reference
+            ProductAuditLog.objects.filter(product=product).update(product=None)
+
+            # Record audit log for deletion
+            ProductAuditLog.objects.create(
+                product=None,
+                product_name=product_name,
+                action_type='edit',
+                user=user,
+                user_name=user.full_name,
+                changes="حذف المنتج نهائياً من النظام",
+                reason=request.POST.get('delete_reason', '').strip() or "حذف المنتج بواسطة المستخدم",
+            )
+            product.delete()
+            messages.success(request, f'تم حذف المنتج "{product_name}" بنجاح من النظام.')
+        except Exception as e:
+            messages.error(request, f'حدث خطأ أثناء محاولة حذف المنتج: {str(e)}')
 
     return redirect('/portal/?tab=sales')
 
@@ -287,7 +380,9 @@ def bill_detail_json_view(request, bill_id):
 
     return JsonResponse({
         'id': bill.id,
-        'created_at': bill.created_at.strftime('%Y-%m-%d %H:%M'),
+        'bill_type': bill.bill_type,
+        'bill_type_display': bill.get_bill_type_display(),
+        'created_at': timezone.localtime(bill.created_at).strftime('%Y-%m-%d %H:%M'),
         'client_name': bill.client.name,
         'client_phone': bill.client.phone,
         'network_name': bill.client.network_name or '—',
@@ -319,7 +414,7 @@ def create_bill_view(request):
         return redirect('portal')
 
     if request.method == 'POST':
-        bill_type = request.POST.get('bill_type', 'sales')  # 'sales' or 'services'
+        bill_type = request.POST.get('bill_type', 'sales')  # 'sales', 'services', or 'refund'
 
         if bill_type == 'sales' and not can_create_sales_bill:
             messages.error(request, 'ليس لديك صلاحية لإنشاء فواتير المبيعات أو أن قسم المنتجات مقفل.')
@@ -328,13 +423,18 @@ def create_bill_view(request):
         if bill_type == 'services' and not can_create_services_bill:
             messages.error(request, 'ليس لديك صلاحية لإنشاء فواتير الخدمات أو أن قسم الخدمات مقفل.')
             return redirect('portal')
+
+        if bill_type == 'refund' and not can_create_sales_bill:
+            messages.error(request, 'ليس لديك صلاحية لإنشاء فواتير المرتجع أو أن قسم المنتجات مقفل.')
+            return redirect('portal')
+
         client_name = request.POST.get('client_name', '').strip()
         client_phone = request.POST.get('client_phone', '').strip()
         network_name = request.POST.get('network_name', '').strip()
 
         if not client_name or not client_phone:
             messages.error(request, 'يرجى إدخال اسم العميل ورقم هاتفه.')
-            return redirect(request.META.get('HTTP_REFERER', '/portal/?tab=' + bill_type))
+            return redirect(request.META.get('HTTP_REFERER', '/portal/?tab=' + ('bills' if bill_type == 'refund' else bill_type)))
 
         with transaction.atomic():
             # Get or create client
@@ -369,14 +469,11 @@ def create_bill_view(request):
                 bill = Bill.objects.create(
                     client=client,
                     created_by=user,
+                    bill_type='services',
                     total_amount=service_cost,
                     notes=f"خدمة: {service_description}",
                 )
 
-                # Optional placeholder product for service if needed, or bill with notes
-                # To maintain integrity with items:
-                # We can create a BillItem referencing or just keep bill total with notes
-                # Let's find or create a general service virtual product:
                 service_product, _ = Product.objects.get_or_create(
                     name=service_description[:190],
                     defaults={
@@ -393,6 +490,59 @@ def create_bill_view(request):
                     condition='new',
                     quantity=1,
                 )
+
+            elif bill_type == 'refund':
+                # Refund bill
+                product_id = request.POST.get('refund_product_id') or request.POST.get('product_id')
+                quantity_str = request.POST.get('refund_quantity') or request.POST.get('quantity', '1')
+                refund_reason = request.POST.get('refund_reason', '').strip()
+
+                if not product_id:
+                    messages.error(request, 'يرجى اختيار المنتج المرتجع.')
+                    return redirect('/portal/?tab=bills')
+
+                product = Product.objects.filter(id=product_id).first()
+                if not product:
+                    messages.error(request, 'المنتج المحدد غير موجود.')
+                    return redirect('/portal/?tab=bills')
+
+                try:
+                    quantity = int(quantity_str)
+                    if quantity <= 0:
+                        quantity = 1
+                except ValueError:
+                    quantity = 1
+
+                refund_amount = Decimal(product.price) * Decimal(quantity)
+
+                bill = Bill.objects.create(
+                    client=client,
+                    created_by=user,
+                    bill_type='refund',
+                    total_amount=refund_amount,
+                    notes=f"فاتورة مرتجع: {refund_reason or 'استرجاع بضاعة'}",
+                )
+
+                BillItem.objects.create(
+                    bill=bill,
+                    product=product,
+                    product_name=f"[مرتجع] {product.name}",
+                    price=product.price,
+                    condition=product.condition,
+                    quantity=quantity,
+                )
+
+                # Record audit log for refund
+                ProductAuditLog.objects.create(
+                    product=product,
+                    product_name=product.name,
+                    action_type='refund',
+                    user=user,
+                    user_name=user.full_name,
+                    changes=f"فاتورة مرتجع #{bill.id}: تم استرجاع {quantity} قطعة من العميل '{client.name}' إلى المخزن (المتوفر حالياً: {product.available_count} قطعة | المبلغ المسترد: {product.price * quantity} ر.ي)",
+                    reason=refund_reason or "استرجاع منتج من العميل",
+                )
+
             else:
                 # Sales product bill
                 product_id = request.POST.get('product_id')
@@ -414,6 +564,10 @@ def create_bill_view(request):
                 except ValueError:
                     quantity = 1
 
+                if not product.is_active:
+                    messages.error(request, f'المنتج "{product.name}" موقوف حالياً عن البيع ولا يمكن إنشاء فاتورة له.')
+                    return redirect(request.META.get('HTTP_REFERER', '/portal/?tab=sales'))
+
                 if product.available_count <= 0:
                     messages.error(request, f'المنتج "{product.name}" غير متوفر (نفدت الكمية). لا يمكن إنشاء فاتورة له.')
                     return redirect(request.META.get('HTTP_REFERER', '/portal/?tab=sales'))
@@ -425,6 +579,7 @@ def create_bill_view(request):
                 bill = Bill.objects.create(
                     client=client,
                     created_by=user,
+                    bill_type='sales',
                     total_amount=Decimal(product.price) * Decimal(quantity),
                 )
 
@@ -439,7 +594,10 @@ def create_bill_view(request):
 
             bill.calculate_total()
 
-        messages.success(request, f'تم إنشاء الفاتورة رقم #{bill.id} للعميل "{client.name}" بنجاح.')
+        if bill_type == 'refund':
+            messages.success(request, f'تم إنشاء فاتورة المرتجع رقم #{bill.id} وإعادة {quantity} قطعة للمخزن بنجاح.')
+        else:
+            messages.success(request, f'تم إنشاء الفاتورة رقم #{bill.id} للعميل "{client.name}" بنجاح.')
         return redirect('/portal/?tab=bills')
 
     return redirect('portal')
