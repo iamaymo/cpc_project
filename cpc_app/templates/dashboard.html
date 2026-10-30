@@ -361,16 +361,23 @@
                 <tbody class="divide-y divide-gray-100 text-sm">
                   {% for bill in bills %}
                   <tr class="hover:bg-gray-50 transition bill-row"
-                      data-search="{{ bill.id }} {{ bill.client.name|lower }} {{ bill.client.phone }} {{ bill.client.network_name|default:''|lower }}">
+                      data-search="{{ bill.bill_number|default:bill.id }} {{ bill.id }} {{ bill.client.name|lower }} {{ bill.client.phone }} {{ bill.client.network_name|default:''|lower }}{% if bill.original_bill %} {{ bill.original_bill.bill_number|default:bill.original_bill.id }}{% endif %}">
                     <td class="px-6 py-4 font-mono font-bold text-[#1b313e]">
-                      <div class="flex items-center gap-1.5">
-                        <span>#{{ bill.id }}</span>
-                        {% if bill.bill_type == 'refund' %}
-                          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200">مرتجع</span>
-                        {% elif bill.bill_type == 'services' %}
-                          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200">خدمة</span>
-                        {% else %}
-                          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">مبيعات</span>
+                      <div class="flex flex-col gap-0.5">
+                        <div class="flex items-center gap-1.5">
+                          <span>#{{ bill.bill_number|default:bill.id }}</span>
+                          {% if bill.bill_type == 'refund' %}
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200">مرتجع</span>
+                          {% elif bill.bill_type == 'services' %}
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200">خدمة</span>
+                          {% else %}
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">مبيعات</span>
+                          {% endif %}
+                        </div>
+                        {% if bill.original_bill %}
+                          <span class="text-[11px] text-gray-500 font-normal font-mono" title="فاتورة الشراء الأصلية">
+                            الأصل: #{{ bill.original_bill.bill_number|default:bill.original_bill.id }}
+                          </span>
                         {% endif %}
                       </div>
                     </td>
@@ -719,6 +726,28 @@
         <form method="post" id="edit-product-form" class="p-6 space-y-4 overflow-y-auto">
           {% csrf_token %}
 
+          <!-- سجل التوريد (فوق حالة المخزون) -->
+          <div class="flex items-center justify-between bg-gradient-to-r from-emerald-50 to-slate-50 border border-emerald-200/90 px-4 py-2.5 rounded-xl shadow-2xs">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shadow-xs shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                </svg>
+              </div>
+              <div>
+                <span class="text-xs font-bold text-gray-800 block">سجل التوريد</span>
+                <span class="text-[10px] text-gray-500">سجل الكميات الواردة وتواريخ توريدها ومن قام بها</span>
+              </div>
+            </div>
+            <button type="button" onclick="openProductRestockLogModal()"
+                    class="px-3.5 py-1.5 bg-[#1b313e] hover:bg-[#152631] text-white text-xs font-bold rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+              <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <span>السجل</span>
+            </button>
+          </div>
+
           <!-- SECTION 1: حالة المخزون واضافة كمية واردة جديدة (في البداية) -->
           <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/90 space-y-3">
             <div class="flex items-center justify-between text-xs pb-1 border-b border-slate-200/70">
@@ -874,6 +903,75 @@
       </div>
     </div>
 
+    <!-- MODAL: PRODUCT RESTOCK HISTORY (شاشة سجل التوريدات لهذا المنتج) -->
+    <div id="product-restock-modal" class="fixed inset-0 z-[70] bg-black/60 backdrop-blur-xs hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden border border-gray-100">
+        <!-- Header -->
+        <div class="bg-[#1b313e] px-6 py-4 flex items-center justify-between text-white shrink-0">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-bold text-base" id="restock-modal-title">سجل توريدات المنتج</h3>
+              <p class="text-xs text-gray-300 mt-0.5" id="restock-modal-subtitle">تفاصيل كافة الكميات الموردة وتواريخها والمسؤول</p>
+            </div>
+          </div>
+          <button type="button" onclick="closeProductRestockLogModal()" class="text-gray-300 hover:text-white transition cursor-pointer">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 overflow-y-auto space-y-4 flex-1">
+          <!-- Summary cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <span class="text-[11px] text-gray-500 block mb-0.5">الرصيد الكلي المدخل</span>
+              <span id="restock-modal-total-qty" class="text-lg font-extrabold text-[#1b313e] font-mono">0</span>
+            </div>
+            <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+              <span class="text-[11px] text-emerald-700 block mb-0.5">المتوفر حالياً بالمخزن</span>
+              <span id="restock-modal-avail-qty" class="text-lg font-extrabold text-emerald-800 font-mono">0</span>
+            </div>
+            <div class="bg-blue-50 p-3 rounded-xl border border-blue-200">
+              <span class="text-[11px] text-blue-700 block mb-0.5">عدد عمليات التوريد</span>
+              <span id="restock-modal-ops-count" class="text-lg font-extrabold text-blue-800 font-mono">0</span>
+            </div>
+          </div>
+
+          <!-- Table Container -->
+          <div class="border border-gray-200 rounded-xl overflow-hidden">
+            <table class="w-full text-right text-xs">
+              <thead class="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200">
+                <tr>
+                  <th class="p-3">تاريخ ووقت التوريد</th>
+                  <th class="p-3 text-center">الكمية الموردة</th>
+                  <th class="p-3">عن طريق من</th>
+                  <th class="p-3">تفاصيل التوريد والملاحظات</th>
+                </tr>
+              </thead>
+              <tbody id="restock-modal-tbody" class="divide-y divide-gray-100">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-end">
+          <button type="button" onclick="closeProductRestockLogModal()"
+                  class="px-5 py-2 bg-[#1b313e] hover:bg-[#152631] text-white text-xs font-bold rounded-lg shadow-xs transition cursor-pointer">
+            إغلاق
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Hidden form for deleting product -->
     <form id="delete-product-form" method="post" class="hidden">
       {% csrf_token %}
@@ -905,27 +1003,35 @@
           {% csrf_token %}
           <input type="hidden" name="bill_type" id="bill-type-input" value="sales">
           
-          <!-- Bill Type Selector Tabs -->
+          <!-- Bill Type Selector Tabs (Only show tabs permitted for user) -->
           <div class="bg-slate-100 p-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5" id="bill-type-selector-bar">
+            {% if can_create_sales_bill %}
             <button type="button" onclick="setupBillModalMode('sales')" id="mode-btn-sales"
                     class="flex-1 py-2 text-xs font-bold rounded-lg transition text-center bg-[#1b313e] text-white shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/></svg>
               <span>فاتورة مبيعات</span>
             </button>
+            {% endif %}
+
+            {% if can_create_services_bill %}
             <button type="button" onclick="setupBillModalMode('services')" id="mode-btn-services"
                     class="flex-1 py-2 text-xs font-bold rounded-lg transition text-center text-gray-600 hover:text-gray-900 hover:bg-white flex items-center justify-center gap-1.5 cursor-pointer">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
               <span>فاتورة خدمات</span>
             </button>
+            {% endif %}
+
+            {% if can_create_refund_bill %}
             <button type="button" onclick="setupBillModalMode('refund')" id="mode-btn-refund"
                     class="flex-1 py-2 text-xs font-bold rounded-lg transition text-center text-gray-600 hover:text-gray-900 hover:bg-white flex items-center justify-center gap-1.5 cursor-pointer">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 15v-1a4 4 0 00-4-4H4m0 0l4 4m-4-4l4-4m12 11a4 4 0 004-4v-1a4 4 0 00-4-4h-2"/></svg>
               <span>فاتورة مرتجع</span>
             </button>
+            {% endif %}
           </div>
           
           <!-- Client Information -->
-          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+          <div id="bill-client-section" class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
             <div class="flex items-center justify-between">
               <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">بيانات العميل</h4>
               <span id="client-found-badge" class="hidden text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
@@ -1057,27 +1163,51 @@
           <div id="refund-bill-section" class="hidden space-y-4">
             <div class="bg-rose-50/70 p-4 rounded-xl border border-rose-200 space-y-3">
               <div class="flex items-center justify-between">
-                <h4 class="text-xs font-bold text-rose-900 uppercase tracking-wider">تفاصيل استرجاع البضاعة</h4>
-                <span class="text-[11px] text-rose-700 font-bold bg-rose-100 px-2 py-0.5 rounded-full border border-rose-200">
+                <h4 class="text-xs font-bold text-rose-900 uppercase tracking-wider">مطابقة فاتورة الشراء واسترجاع البضاعة</h4>
+                <span class="text-[11px] text-rose-700 font-bold bg-rose-100 px-2.5 py-0.5 rounded-full border border-rose-200">
                   فاتورة مرتجع
                 </span>
               </div>
 
+              <!-- Step 1: Original Bill Input & Verification -->
               <div>
-                <label class="block mb-1 text-xs font-semibold text-gray-700">اختيار المنتج المرتجع <span class="text-red-500">*</span></label>
-                <select name="refund_product_id" id="refund-product-select" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white font-medium text-gray-800">
-                  <option value="">-- اضغط لاختيار المنتج المراد استرجاعه --</option>
-                  {% for p in products %}
-                    <option value="{{ p.id }}" data-price="{{ p.price }}">{{ p.name }} ({{ p.get_condition_display }}) - {{ p.price|floatformat:0|intcomma }} ر.ي</option>
-                  {% endfor %}
+                <label class="block mb-1 text-xs font-semibold text-gray-700">رقم فاتورة الشراء الأصلية <span class="text-red-500">*</span></label>
+                <div class="flex gap-2">
+                  <div class="relative flex-1">
+                    <input type="text" name="original_bill_number" id="refund-original-bill-input" placeholder="أدخل رقم الفاتورة (مثال: 1030121833)"
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none font-mono text-left" dir="ltr">
+                  </div>
+                  <button type="button" id="verify-bill-btn" onclick="verifyOriginalBill()"
+                          class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center gap-1.5 cursor-pointer shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <span>تحقق ومطابقة</span>
+                  </button>
+                </div>
+                <p class="text-[11px] text-gray-400 mt-1">يجب التحقق من رقم فاتورة الشراء أولاً لتحديد البضاعة المشتراة والحد الأقصى للإرجاع.</p>
+              </div>
+
+              <!-- Match Status Alert Container -->
+              <div id="refund-bill-match-status" class="hidden"></div>
+
+              <!-- Step 2: Product Selection from verified bill -->
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block text-xs font-semibold text-gray-700">اختيار المنتج المراد إرجاعه <span class="text-red-500">*</span></label>
+                  <span id="refund-max-badge" class="hidden text-[11px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded"></span>
+                </div>
+                <select name="refund_product_id" id="refund-product-select" disabled
+                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-gray-50 font-medium text-gray-800 disabled:opacity-60 disabled:cursor-not-allowed">
+                  <option value="">-- يرجى إدخال رقم الفاتورة والتحقق أولاً --</option>
                 </select>
               </div>
 
+              <!-- Step 3: Quantity & Reason -->
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label class="block mb-1 text-xs font-semibold text-gray-700">الكمية المرتجعة <span class="text-red-500">*</span></label>
-                  <input type="number" name="refund_quantity" id="refund-quantity-input" min="1" value="1"
-                         class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none font-mono">
+                  <input type="number" name="refund_quantity" id="refund-quantity-input" min="1" value="1" disabled
+                         class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none font-mono disabled:opacity-60 disabled:cursor-not-allowed">
+                  <div id="refund-qty-warning" class="hidden mt-1.5 text-[11px] font-bold text-red-600 bg-red-50 p-2 rounded-lg border border-red-200"></div>
                 </div>
 
                 <div>
@@ -1089,7 +1219,7 @@
 
               <div class="text-[11px] text-rose-800 bg-white p-2.5 rounded-lg border border-rose-200 flex items-center gap-2">
                 <svg class="w-4 h-4 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span>عند تأكيد الفاتورة، ستتم إعادة الكمية المرتجعة تلقائياً إلى رصيد المخزن المتوفر وتوثيق العملية في التقارير وسجل التدقيق.</span>
+                <span>يتم استرجاع المنتجات المباعة فقط وفق الكميات المتبقية من الفاتورة الأصلية، وتُعاد الكميات تلقائياً إلى رصيد المخزن.</span>
               </div>
             </div>
           </div>
@@ -1150,6 +1280,7 @@
             <div>
               <p class="text-gray-500">رقم الفاتورة: <span id="v-bill-id" class="font-bold text-gray-800 font-mono"></span></p>
               <p class="text-gray-500 mt-1">نوع الفاتورة: <span id="v-bill-type" class="font-bold text-gray-800"></span></p>
+              <p id="v-bill-original-container" class="hidden text-rose-700 font-bold mt-1">فاتورة الشراء الأصلية: <span id="v-bill-original" class="font-mono"></span></p>
               <p class="text-gray-500 mt-1">اسم العميل: <span id="v-bill-client" class="font-bold text-gray-800"></span></p>
               <p class="text-gray-500 mt-1">اسم الشبكة: <span id="v-bill-network" class="font-bold text-gray-800"></span></p>
             </div>
@@ -1420,6 +1551,98 @@
         if (editProductModal) editProductModal.classList.add('hidden');
       }
 
+      // Restock Log Modal Handlers
+      const productRestockModal = document.getElementById('product-restock-modal');
+      const restockModalTitle = document.getElementById('restock-modal-title');
+      const restockModalSubtitle = document.getElementById('restock-modal-subtitle');
+      const restockModalTotalQty = document.getElementById('restock-modal-total-qty');
+      const restockModalAvailQty = document.getElementById('restock-modal-avail-qty');
+      const restockModalOpsCount = document.getElementById('restock-modal-ops-count');
+      const restockModalTbody = document.getElementById('restock-modal-tbody');
+
+      function openProductRestockLogModal(productId = currentEditingProductId) {
+        if (!productRestockModal || !productId) return;
+
+        // Reset and show loading state
+        if (restockModalTbody) {
+          restockModalTbody.innerHTML = `
+            <tr>
+              <td colspan="4" class="p-8 text-center text-gray-500">
+                <span class="inline-block w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin ml-2 align-middle"></span>
+                <span>جاري تحميل سجل التوريدات...</span>
+              </td>
+            </tr>
+          `;
+        }
+        productRestockModal.classList.remove('hidden');
+
+        fetch(`/portal/product-restock-history/${productId}/`)
+          .then(res => res.json())
+          .then(data => {
+            if (restockModalTitle) {
+              restockModalTitle.textContent = `سجل توريدات: ${data.product_name}`;
+            }
+            if (restockModalSubtitle) {
+              restockModalSubtitle.textContent = `تاريخ إضافة المنتج الأصلي: ${data.created_at} | إجمالي الكميات الموردة لاحقاً: +${data.total_restocked_qty} قطعة`;
+            }
+            if (restockModalTotalQty) restockModalTotalQty.textContent = data.initial_count;
+            if (restockModalAvailQty) restockModalAvailQty.textContent = data.available_count;
+            if (restockModalOpsCount) restockModalOpsCount.textContent = data.history.length;
+
+            if (!restockModalTbody) return;
+
+            if (!data.history || data.history.length === 0) {
+              restockModalTbody.innerHTML = `
+                <tr>
+                  <td colspan="4" class="p-8 text-center text-gray-500 space-y-2">
+                    <svg class="w-8 h-8 text-gray-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                    </svg>
+                    <p class="font-bold text-gray-700 text-xs">لا توجد عمليات توريد إضافية مسجلة لهذا المنتج بعد إضافته.</p>
+                    <p class="text-[11px] text-gray-400">تم إنشاء المنتج لأول مرة بتاريخ ${data.created_at} بالكمية الافتتاحية: ${data.initial_count} قطعة.</p>
+                  </td>
+                </tr>
+              `;
+            } else {
+              restockModalTbody.innerHTML = data.history.map(it => `
+                <tr class="hover:bg-slate-50 transition">
+                  <td class="p-3 font-mono text-gray-600 whitespace-nowrap" dir="ltr">${it.date}</td>
+                  <td class="p-3 text-center whitespace-nowrap">
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 font-mono border border-emerald-200">
+                      +${it.quantity !== null ? it.quantity : 'توريد'} قطعة
+                    </span>
+                  </td>
+                  <td class="p-3 font-bold text-gray-800 whitespace-nowrap">
+                    <div class="flex items-center gap-1.5">
+                      <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                      <span>${escapeHtml(it.user_name)}</span>
+                    </div>
+                  </td>
+                  <td class="p-3 text-gray-700 text-[11px]">
+                    <div class="font-mono bg-slate-50 p-1.5 rounded border border-slate-200">${escapeHtml(it.changes)}</div>
+                    ${it.reason && it.reason !== '—' ? `<span class="text-gray-400 text-[10px] block mt-0.5">${escapeHtml(it.reason)}</span>` : ''}
+                  </td>
+                </tr>
+              `).join('');
+            }
+          })
+          .catch(() => {
+            if (restockModalTbody) {
+              restockModalTbody.innerHTML = `
+                <tr>
+                  <td colspan="4" class="p-6 text-center text-rose-600 text-xs">
+                    حدث خطأ أثناء تحميل سجل التوريدات. يرجى المحاولة مرة أخرى.
+                  </td>
+                </tr>
+              `;
+            }
+          });
+      }
+
+      function closeProductRestockLogModal() {
+        if (productRestockModal) productRestockModal.classList.add('hidden');
+      }
+
       if (closeEditModalBtn) closeEditModalBtn.addEventListener('click', closeEditProductModal);
       if (cancelEditModalBtn) cancelEditModalBtn.addEventListener('click', closeEditProductModal);
 
@@ -1526,6 +1749,10 @@
       const serviceCostInput = document.getElementById('service-cost-input');
 
       const refundBillSection = document.getElementById('refund-bill-section');
+      const refundOriginalBillInput = document.getElementById('refund-original-bill-input');
+      const refundBillMatchStatus = document.getElementById('refund-bill-match-status');
+      const refundMaxBadge = document.getElementById('refund-max-badge');
+      const refundQtyWarning = document.getElementById('refund-qty-warning');
       const refundProductSelect = document.getElementById('refund-product-select');
       const refundQuantityInput = document.getElementById('refund-quantity-input');
       const refundReasonInput = document.getElementById('refund-reason-input');
@@ -1534,6 +1761,7 @@
       const modeBtnServices = document.getElementById('mode-btn-services');
       const modeBtnRefund = document.getElementById('mode-btn-refund');
 
+      const billClientSection = document.getElementById('bill-client-section');
       const clientPhoneInput = document.getElementById('client-phone-input');
       const clientNameInput = document.getElementById('client-name-input');
       const clientNetworkInput = document.getElementById('client-network-input');
@@ -1549,8 +1777,24 @@
         selectedIdInput.value = '';
         currentSelectedPrice = 0;
         currentSelectedAvailable = 0;
-        if (refundProductSelect) refundProductSelect.value = '';
-        if (refundQuantityInput) refundQuantityInput.value = '1';
+        if (billClientSection) billClientSection.classList.remove('hidden');
+        if (clientPhoneInput) clientPhoneInput.setAttribute('required', 'required');
+        if (clientNameInput) clientNameInput.setAttribute('required', 'required');
+        if (refundOriginalBillInput) refundOriginalBillInput.value = '';
+        if (refundBillMatchStatus) {
+          refundBillMatchStatus.innerHTML = '';
+          refundBillMatchStatus.classList.add('hidden');
+        }
+        if (refundMaxBadge) refundMaxBadge.classList.add('hidden');
+        if (refundQtyWarning) refundQtyWarning.classList.add('hidden');
+        if (refundProductSelect) {
+          refundProductSelect.innerHTML = '<option value="">-- يرجى إدخال رقم الفاتورة والتحقق أولاً --</option>';
+          refundProductSelect.disabled = true;
+        }
+        if (refundQuantityInput) {
+          refundQuantityInput.value = '1';
+          refundQuantityInput.disabled = true;
+        }
         if (refundReasonInput) refundReasonInput.value = '';
         displayPrice.textContent = '—';
         displayCondition.textContent = '—';
@@ -1563,7 +1807,15 @@
         if (availableContainer) availableContainer.classList.add('hidden');
       }
 
+      const canCreateSalesBill = {{ can_create_sales_bill|yesno:"true,false" }};
+      const canCreateServicesBill = {{ can_create_services_bill|yesno:"true,false" }};
+      const canCreateRefundBill = {{ can_create_refund_bill|yesno:"true,false" }};
+
       function setupBillModalMode(mode) {
+        if (mode === 'sales' && !canCreateSalesBill) return;
+        if (mode === 'services' && !canCreateServicesBill) return;
+        if (mode === 'refund' && !canCreateRefundBill) return;
+
         // Reset tab styles
         [modeBtnSales, modeBtnServices, modeBtnRefund].forEach(btn => {
           if (!btn) return;
@@ -1576,6 +1828,9 @@
           if (salesBillSection) salesBillSection.classList.add('hidden');
           if (servicesBillSection) servicesBillSection.classList.remove('hidden');
           if (refundBillSection) refundBillSection.classList.add('hidden');
+          if (billClientSection) billClientSection.classList.remove('hidden');
+          if (clientPhoneInput) clientPhoneInput.setAttribute('required', 'required');
+          if (clientNameInput) clientNameInput.setAttribute('required', 'required');
           if (selectedIdInput) selectedIdInput.removeAttribute('required');
           if (serviceDescInput) serviceDescInput.setAttribute('required', 'required');
           if (modeBtnServices) modeBtnServices.className = "flex-1 py-2 text-xs font-bold rounded-lg transition text-center bg-purple-700 text-white shadow-sm flex items-center justify-center gap-1.5 cursor-pointer";
@@ -1592,6 +1847,9 @@
           if (salesBillSection) salesBillSection.classList.add('hidden');
           if (servicesBillSection) servicesBillSection.classList.add('hidden');
           if (refundBillSection) refundBillSection.classList.remove('hidden');
+          if (billClientSection) billClientSection.classList.add('hidden');
+          if (clientPhoneInput) clientPhoneInput.removeAttribute('required');
+          if (clientNameInput) clientNameInput.removeAttribute('required');
           if (selectedIdInput) selectedIdInput.removeAttribute('required');
           if (serviceDescInput) serviceDescInput.removeAttribute('required');
           if (modeBtnRefund) modeBtnRefund.className = "flex-1 py-2 text-xs font-bold rounded-lg transition text-center bg-rose-600 text-white shadow-sm flex items-center justify-center gap-1.5 cursor-pointer";
@@ -1607,6 +1865,9 @@
           if (salesBillSection) salesBillSection.classList.remove('hidden');
           if (servicesBillSection) servicesBillSection.classList.add('hidden');
           if (refundBillSection) refundBillSection.classList.add('hidden');
+          if (billClientSection) billClientSection.classList.remove('hidden');
+          if (clientPhoneInput) clientPhoneInput.setAttribute('required', 'required');
+          if (clientNameInput) clientNameInput.setAttribute('required', 'required');
           if (selectedIdInput) selectedIdInput.setAttribute('required', 'required');
           if (serviceDescInput) serviceDescInput.removeAttribute('required');
           if (modeBtnSales) modeBtnSales.className = "flex-1 py-2 text-xs font-bold rounded-lg transition text-center bg-[#1b313e] text-white shadow-sm flex items-center justify-center gap-1.5 cursor-pointer";
@@ -1618,43 +1879,187 @@
         }
       }
 
+      function verifyOriginalBill() {
+        if (!refundOriginalBillInput) return;
+        const rawNum = refundOriginalBillInput.value.trim().replace(/^#/, '');
+        if (!rawNum) {
+          alert('يرجى إدخال رقم فاتورة الشراء الأصلية أولاً.');
+          refundOriginalBillInput.focus();
+          return;
+        }
+
+        if (refundBillMatchStatus) {
+          refundBillMatchStatus.className = "text-xs p-3 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 flex items-center gap-2";
+          refundBillMatchStatus.innerHTML = '<span class="inline-block w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span> <span>جاري البحث والتحقق من الفاتورة...</span>';
+          refundBillMatchStatus.classList.remove('hidden');
+        }
+
+        fetch(`/portal/lookup-bill/?number=${encodeURIComponent(rawNum)}`)
+          .then(res => res.json())
+          .then(data => {
+            if (!data.found) {
+              if (refundBillMatchStatus) {
+                refundBillMatchStatus.className = "text-xs p-3 rounded-xl bg-rose-50 text-rose-800 border border-rose-200 flex items-center gap-2";
+                refundBillMatchStatus.innerHTML = `<svg class="w-4 h-4 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> <span>${escapeHtml(data.error || 'لم يتم العثور على الفاتورة')}</span>`;
+                refundBillMatchStatus.classList.remove('hidden');
+              }
+              if (refundProductSelect) {
+                refundProductSelect.innerHTML = '<option value="">-- يرجى إدخال رقم فاتورة صحيح ومطابقته --</option>';
+                refundProductSelect.disabled = true;
+              }
+              if (refundQuantityInput) {
+                refundQuantityInput.disabled = true;
+              }
+              if (refundMaxBadge) refundMaxBadge.classList.add('hidden');
+              if (refundQtyWarning) refundQtyWarning.classList.add('hidden');
+              if (submitBillBtn && billTypeInput && billTypeInput.value === 'refund') {
+                submitBillBtn.disabled = true;
+              }
+              return;
+            }
+
+            // Fill client data
+            fillClientData(data.client_name, data.client_phone, data.client_network);
+
+            // Show success alert
+            if (refundBillMatchStatus) {
+              refundBillMatchStatus.className = "text-xs p-3 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 space-y-1";
+              refundBillMatchStatus.innerHTML = `
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-emerald-900 flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    تمت مطابقة الفاتورة #${escapeHtml(data.bill_number)} بنجاح
+                  </span>
+                  <span class="font-mono font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-[11px]">إجمالي الشراء: ${formatNumberWithCommas(data.total_amount)} ر.ي</span>
+                </div>
+                <p class="text-[11px] text-gray-600">العميل: <strong>${escapeHtml(data.client_name)}</strong> (${escapeHtml(data.client_phone)}) • تاريخ الشراء: ${escapeHtml(data.created_at)}</p>
+              `;
+              refundBillMatchStatus.classList.remove('hidden');
+            }
+
+            // Populate products
+            if (refundProductSelect) {
+              if (!data.items || data.items.length === 0) {
+                refundProductSelect.innerHTML = '<option value="">-- لا توجد منتجات مسجلة في هذه الفاتورة --</option>';
+                refundProductSelect.disabled = true;
+                if (refundQuantityInput) refundQuantityInput.disabled = true;
+              } else {
+                let optionsHtml = '<option value="">-- اضغط لاختيار المنتج المراد إرجاعه --</option>';
+                data.items.forEach(it => {
+                  const isAvailable = it.max_refundable > 0;
+                  const label = `${escapeHtml(it.product_name)} (${escapeHtml(it.condition)}) - السعر: ${formatNumberWithCommas(it.price)} ر.ي [المشترى: ${it.purchased_quantity} | متبقي للإرجاع: ${it.max_refundable}] ${it.max_refundable <= 0 ? '(تم إرجاع كامل الكمية)' : ''}`;
+                  optionsHtml += `<option value="${it.product_id}" data-price="${it.price}" data-max="${it.max_refundable}" data-purchased="${it.purchased_quantity}" data-already="${it.already_refunded}" data-remaining="${it.remaining_refundable}" ${!isAvailable ? 'disabled class="text-gray-400 bg-gray-50"' : ''}>${label}</option>`;
+                });
+                refundProductSelect.innerHTML = optionsHtml;
+                refundProductSelect.disabled = false;
+                if (refundQuantityInput) refundQuantityInput.disabled = false;
+              }
+            }
+
+            calculateRefundTotal();
+          })
+          .catch(() => {
+            if (refundBillMatchStatus) {
+              refundBillMatchStatus.className = "text-xs p-3 rounded-xl bg-rose-50 text-rose-800 border border-rose-200";
+              refundBillMatchStatus.innerHTML = 'حدث خطأ أثناء الاتصال بالخادم والتحقق من الفاتورة.';
+              refundBillMatchStatus.classList.remove('hidden');
+            }
+          });
+      }
+
       function calculateRefundTotal() {
         if (!refundProductSelect) return;
         const selectedOpt = refundProductSelect.options[refundProductSelect.selectedIndex];
-        const price = parseFloat(selectedOpt ? selectedOpt.getAttribute('data-price') : 0) || 0;
+        if (!selectedOpt || !selectedOpt.value) {
+          if (refundMaxBadge) refundMaxBadge.classList.add('hidden');
+          if (refundQtyWarning) refundQtyWarning.classList.add('hidden');
+          if (displayTotal && billTypeInput && billTypeInput.value === 'refund') {
+            displayTotal.textContent = '0 ر.ي (مبلغ مسترد)';
+          }
+          if (submitBillBtn && billTypeInput && billTypeInput.value === 'refund') {
+            submitBillBtn.disabled = true;
+          }
+          return;
+        }
+
+        const price = parseFloat(selectedOpt.getAttribute('data-price')) || 0;
+        const maxRefund = parseInt(selectedOpt.getAttribute('data-max')) || 0;
         const qty = parseInt(refundQuantityInput ? refundQuantityInput.value : 1) || 1;
+
+        if (refundMaxBadge) {
+          refundMaxBadge.textContent = `الحد الأقصى للإرجاع: ${maxRefund} قطعة`;
+          refundMaxBadge.classList.remove('hidden');
+        }
+
+        let isValid = true;
+        if (maxRefund <= 0) {
+          isValid = false;
+          if (refundQtyWarning) {
+            refundQtyWarning.textContent = 'تم استرجاع كامل الكمية المشتراة لهذا المنتج من هذه الفاتورة.';
+            refundQtyWarning.classList.remove('hidden');
+          }
+        } else if (qty > maxRefund) {
+          isValid = false;
+          if (refundQtyWarning) {
+            refundQtyWarning.textContent = `الكمية المدخلة (${qty}) تتجاوز الحد الأقصى المسموح بإرجاعه من هذه الفاتورة (${maxRefund} قطع).`;
+            refundQtyWarning.classList.remove('hidden');
+          }
+        } else if (qty <= 0) {
+          isValid = false;
+          if (refundQtyWarning) {
+            refundQtyWarning.textContent = 'يرجى إدخال كمية صحيحة (1 أو أكثر).';
+            refundQtyWarning.classList.remove('hidden');
+          }
+        } else {
+          if (refundQtyWarning) refundQtyWarning.classList.add('hidden');
+        }
+
         const total = price * qty;
-        if (displayTotal) displayTotal.textContent = `${formatNumberWithCommas(total)} ر.ي (مبلغ مسترد)`;
-        if (submitBillBtn) submitBillBtn.disabled = !refundProductSelect.value;
+        if (displayTotal && billTypeInput && billTypeInput.value === 'refund') {
+          displayTotal.textContent = `${formatNumberWithCommas(total)} ر.ي (مبلغ مسترد)`;
+        }
+
+        if (submitBillBtn && billTypeInput && billTypeInput.value === 'refund') {
+          submitBillBtn.disabled = !isValid;
+        }
       }
 
       if (refundProductSelect) refundProductSelect.addEventListener('change', calculateRefundTotal);
       if (refundQuantityInput) refundQuantityInput.addEventListener('input', calculateRefundTotal);
-
-      const canCreateSalesBill = {{ can_create_sales_bill|yesno:"true,false" }};
-      const canCreateServicesBill = {{ can_create_services_bill|yesno:"true,false" }};
+      if (refundOriginalBillInput) {
+        refundOriginalBillInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            verifyOriginalBill();
+          }
+        });
+      }
 
       function openBillModal(mode = '{{ active_tab }}') {
         if (!billModal) return;
-        let targetMode = 'sales';
-        if (mode === 'services') targetMode = 'services';
-        else if (mode === 'refund') targetMode = 'refund';
-        else targetMode = 'sales';
+        let targetMode = null;
 
-        if (targetMode === 'sales' && !canCreateSalesBill) {
-          if (canCreateServicesBill) targetMode = 'services';
-          else {
-            alert('ليس لديك صلاحية لإنشاء فواتير المبيعات أو أن قسم المنتجات مقفل.');
+        if (mode === 'services' && canCreateServicesBill) {
+          targetMode = 'services';
+        } else if (mode === 'refund' && canCreateRefundBill) {
+          targetMode = 'refund';
+        } else if (mode === 'sales' && canCreateSalesBill) {
+          targetMode = 'sales';
+        }
+
+        if (!targetMode) {
+          if (canCreateSalesBill) {
+            targetMode = 'sales';
+          } else if (canCreateServicesBill) {
+            targetMode = 'services';
+          } else if (canCreateRefundBill) {
+            targetMode = 'refund';
+          } else {
+            alert('ليس لديك صلاحية لإنشاء الفواتير.');
             return;
           }
         }
-        if (targetMode === 'services' && !canCreateServicesBill) {
-          if (canCreateSalesBill) targetMode = 'sales';
-          else {
-            alert('ليس لديك صلاحية لإنشاء فواتير الخدمات أو أن قسم الخدمات مقفل.');
-            return;
-          }
-        }
+
         setupBillModalMode(targetMode);
         billModal.classList.remove('hidden');
       }
@@ -1903,13 +2308,26 @@
         fetch(`/portal/bill-json/${billId}/`)
           .then(res => res.json())
           .then(data => {
+            const billNum = data.bill_number || data.id;
             if (data.bill_type === 'refund') {
-              viewerTitle.textContent = `فاتورة مرتجع رقم #${data.id}`;
+              viewerTitle.textContent = `فاتورة مرتجع رقم #${billNum}`;
             } else {
-              viewerTitle.textContent = `فاتورة رقم #${data.id}`;
+              viewerTitle.textContent = `فاتورة رقم #${billNum}`;
             }
-            vBillId.textContent = `#${data.id}`;
+            vBillId.textContent = `#${billNum}`;
             if (vBillType) vBillType.textContent = data.bill_type_display || 'مبيعات';
+            
+            const origContainer = document.getElementById('v-bill-original-container');
+            const origElem = document.getElementById('v-bill-original');
+            if (origContainer && origElem) {
+              if (data.original_bill_number) {
+                origElem.textContent = `#${data.original_bill_number}`;
+                origContainer.classList.remove('hidden');
+              } else {
+                origContainer.classList.add('hidden');
+              }
+            }
+
             vBillClient.textContent = data.client_name;
             vBillNetwork.textContent = data.network_name;
             vBillDate.textContent = data.created_at;
@@ -1923,7 +2341,7 @@
                 <td class="p-2.5 text-center text-gray-500">${escapeHtml(it.condition)}</td>
                 <td class="p-2.5 text-center font-mono font-bold">${it.quantity}</td>
                 <td class="p-2.5 text-left font-mono">${formatNumberWithCommas(it.price)} ر.ي</td>
-                <td class="p-2.5 text-left font-mono font-bold text-emerald-800">${formatNumberWithCommas(it.total)} ر.ي</td>
+                <td class="p-2.5 text-left font-mono font-bold ${data.bill_type === 'refund' ? 'text-rose-800' : 'text-emerald-800'}">${formatNumberWithCommas(it.total)} ر.ي</td>
               </tr>
             `).join('');
 
@@ -1941,13 +2359,19 @@
           .then(res => res.json())
           .then(data => {
             const printWindow = window.open('', '_blank');
+            const billNum = data.bill_number || data.id;
+            const origBillHtml = data.original_bill_number ? `
+              <tr>
+                <td colspan="2" style="padding: 4px; color: #b91c1c;"><strong>فاتورة الشراء الأصلية التابعة لها:</strong> #${escapeHtml(data.original_bill_number)}</td>
+              </tr>
+            ` : '';
             const itemsHtml = data.items.map(it => `
               <tr>
                 <td style="padding: 8px; border-bottom: 1px solid #ddd;">${escapeHtml(it.name)}</td>
                 <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${escapeHtml(it.condition)}</td>
                 <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${it.quantity}</td>
                 <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left; font-family: monospace;">${formatNumberWithCommas(it.price)} ر.ي</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left; font-family: monospace; font-weight: bold;">${formatNumberWithCommas(it.total)} ر.ي</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left; font-family: monospace; font-weight: bold; color: ${data.bill_type === 'refund' ? '#b91c1c' : '#047857'};">${formatNumberWithCommas(it.total)} ر.ي</td>
               </tr>
             `).join('');
 
@@ -1956,7 +2380,7 @@
               <html lang="ar" dir="rtl">
               <head>
                 <meta charset="UTF-8">
-                <title>فاتورة #${data.id}</title>
+                <title>فاتورة #${billNum}</title>
                 <style>
                   body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #1b313e; }
                   .header { text-align: center; border-bottom: 2px solid #1b313e; padding-bottom: 12px; margin-bottom: 20px; }
@@ -1977,9 +2401,10 @@
                 </div>
                 <table class="meta-table">
                   <tr>
-                    <td><strong>رقم الفاتورة:</strong> #${data.id} (${data.bill_type_display})</td>
+                    <td><strong>رقم الفاتورة:</strong> #${billNum} (${data.bill_type_display})</td>
                     <td style="text-align: left;"><strong>التاريخ:</strong> ${data.created_at}</td>
                   </tr>
+                  ${origBillHtml}
                   <tr>
                     <td><strong>اسم العميل:</strong> ${escapeHtml(data.client_name)}</td>
                     <td style="text-align: left;"><strong>رقم الهاتف:</strong> ${data.client_phone}</td>

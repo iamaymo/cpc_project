@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
+from django.utils import timezone
 
 
 class RoleChoices(models.TextChoices):
@@ -164,6 +165,21 @@ class Client(models.Model):
 
 
 class Bill(models.Model):
+    bill_number = models.CharField(
+        max_length=50,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name="رقم الفاتورة"
+    )
+    original_bill = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='refund_bills',
+        verbose_name="فاتورة الشراء الأصلية"
+    )
     client = models.ForeignKey(
         Client,
         on_delete=models.CASCADE,
@@ -198,6 +214,18 @@ class Bill(models.Model):
         verbose_name_plural = 'الفواتير'
         ordering = ['-created_at']
 
+    def save(self, *args, **kwargs):
+        if not self.bill_number:
+            dt = timezone.localtime(timezone.now())
+            base = dt.strftime('%m%d%H%M%S')
+            candidate = base
+            c = 1
+            while Bill.objects.filter(bill_number=candidate).exclude(pk=self.pk).exists():
+                candidate = f"{base}{c}"
+                c += 1
+            self.bill_number = candidate
+        super().save(*args, **kwargs)
+
     def calculate_total(self):
         total = sum(item.total_price for item in self.items.all())
         self.total_amount = total
@@ -205,7 +233,7 @@ class Bill(models.Model):
         return total
 
     def __str__(self):
-        return f"فاتورة #{self.id} - {self.client.name} ({self.created_at.strftime('%Y-%m-%d')})"
+        return f"فاتورة #{self.bill_number or self.id} - {self.client.name} ({self.created_at.strftime('%Y-%m-%d')})"
 
 
 class BillItem(models.Model):

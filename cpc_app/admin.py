@@ -54,9 +54,9 @@ class BillItemInline(admin.TabularInline):
 
 @admin.register(Bill)
 class BillAdmin(admin.ModelAdmin):
-    list_display = ('id', 'bill_type', 'client', 'total_amount', 'created_by', 'created_at')
+    list_display = ('bill_number', 'id', 'bill_type', 'client', 'total_amount', 'created_by', 'created_at')
     list_filter = ('bill_type', 'created_at', 'created_by')
-    search_fields = ('client__name', 'client__phone', 'id')
+    search_fields = ('bill_number', 'client__name', 'client__phone', 'id')
     inlines = [BillItemInline]
 
 

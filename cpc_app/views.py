@@ -1,9 +1,11 @@
 import json
+import re
 from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db import transaction
+from django.db.models import Q, Sum
 from django.utils import timezone
 from .forms import LoginForm, UserCreateForm, ProductForm
 from .models import Users, TabPermission, Product, Client, Bill, BillItem, ProductAuditLog
@@ -104,7 +106,8 @@ def dashboard_view(request):
 
     can_create_sales_bill = user.is_superuser or (sales_perm == 'all' and bills_perm == 'all')
     can_create_services_bill = user.is_superuser or (services_perm == 'all' and bills_perm == 'all')
-    can_create_any_bill = can_create_sales_bill or can_create_services_bill
+    can_create_refund_bill = user.is_superuser or (sales_perm == 'all') or (services_perm == 'all') or (bills_perm == 'all')
+    can_create_any_bill = can_create_sales_bill or can_create_services_bill or can_create_refund_bill
 
     # Data for Sales Tab - sort active & available first, out of stock second, inactive last
     raw_products = list(Product.objects.all().order_by('-created_at'))
@@ -159,6 +162,7 @@ def dashboard_view(request):
         'can_manage_products': user.can_edit_products(),
         'can_create_sales_bill': can_create_sales_bill,
         'can_create_services_bill': can_create_services_bill,
+        'can_create_refund_bill': can_create_refund_bill,
         'can_create_any_bill': can_create_any_bill,
         'sales_perm': sales_perm,
         'services_perm': services_perm,
@@ -315,6 +319,51 @@ def edit_product_view(request, product_id):
 
 
 @login_required_custom
+def product_restock_history_json_view(request, product_id):
+    """API to get restock supply history for a specific product."""
+    user = Users.objects.filter(id=request.session['user_id']).first()
+    if not user:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+
+    product = get_object_or_404(Product, id=product_id)
+
+    # Fetch audit logs matching restock for this product
+    logs = ProductAuditLog.objects.filter(
+        Q(product=product) | Q(product_name=product.name),
+        Q(action_type='restock') | Q(changes__icontains='إضافة كمية واردة') | Q(changes__icontains='توريد')
+    ).order_by('-created_at')
+
+    history_data = []
+    total_restocked_qty = 0
+
+    for log in logs:
+        # Extract added quantity via regex: +10 قطعة or +5
+        match = re.search(r'\+(\d+)\s*(?:قطعة)?', log.changes)
+        qty = int(match.group(1)) if match else None
+        if qty is not None:
+            total_restocked_qty += qty
+
+        history_data.append({
+            'id': log.id,
+            'date': timezone.localtime(log.created_at).strftime('%Y-%m-%d %H:%M'),
+            'user_name': log.user_name or 'النظام',
+            'quantity': qty,
+            'changes': log.changes,
+            'reason': log.reason or 'توريد كمية جديدة للمخزون',
+        })
+
+    return JsonResponse({
+        'product_id': product.id,
+        'product_name': product.name,
+        'created_at': timezone.localtime(product.created_at).strftime('%Y-%m-%d %H:%M'),
+        'initial_count': product.initial_count,
+        'available_count': product.available_count,
+        'total_restocked_qty': total_restocked_qty,
+        'history': history_data,
+    })
+
+
+@login_required_custom
 def delete_product_view(request, product_id):
     user = Users.objects.filter(id=request.session['user_id']).first()
     if not user:
@@ -366,7 +415,7 @@ def bill_detail_json_view(request, bill_id):
     if not user:
         return JsonResponse({'error': 'Unauthorized'}, status=401)
 
-    bill = get_object_or_404(Bill.objects.select_related('client', 'created_by').prefetch_related('items'), id=bill_id)
+    bill = get_object_or_404(Bill.objects.select_related('client', 'created_by', 'original_bill').prefetch_related('items'), id=bill_id)
     items_data = [
         {
             'name': item.product_name,
@@ -380,6 +429,8 @@ def bill_detail_json_view(request, bill_id):
 
     return JsonResponse({
         'id': bill.id,
+        'bill_number': bill.bill_number or str(bill.id),
+        'original_bill_number': (bill.original_bill.bill_number or str(bill.original_bill.id)) if bill.original_bill else None,
         'bill_type': bill.bill_type,
         'bill_type_display': bill.get_bill_type_display(),
         'created_at': timezone.localtime(bill.created_at).strftime('%Y-%m-%d %H:%M'),
@@ -389,6 +440,73 @@ def bill_detail_json_view(request, bill_id):
         'created_by': bill.created_by.full_name if bill.created_by else 'النظام',
         'total_amount': float(bill.total_amount),
         'notes': bill.notes or '',
+        'items': items_data,
+    })
+
+
+@login_required_custom
+def lookup_bill_json_view(request):
+    """API to lookup a sales bill by number/ID for refund matching."""
+    user = Users.objects.filter(id=request.session['user_id']).first()
+    if not user:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+
+    raw_query = request.GET.get('number', '').strip()
+    clean_query = raw_query.lstrip('#').strip()
+    if not clean_query:
+        return JsonResponse({'found': False, 'error': 'يرجى إدخال رقم الفاتورة.'})
+
+    q = Q(bill_type='sales') & (Q(bill_number=clean_query) | Q(bill_number__iexact=clean_query))
+    if clean_query.isdigit():
+        q |= (Q(bill_type='sales') & Q(id=int(clean_query)))
+
+    bill = Bill.objects.filter(q).select_related('client').prefetch_related('items__product').first()
+    if not bill:
+        return JsonResponse({
+            'found': False,
+            'error': f'لم يتم العثور على فاتورة مبيعات بالرقم "{clean_query}". يرجى التحقق من الرقم.'
+        })
+
+    items_data = []
+    for item in bill.items.all():
+        if item.product:
+            already_refunded = BillItem.objects.filter(
+                bill__original_bill=bill,
+                bill__bill_type='refund',
+                product=item.product
+            ).aggregate(Sum('quantity'))['quantity__sum'] or 0
+
+            # Warehouse net sold check
+            total_sales = item.product.bill_items.filter(bill__bill_type='sales').aggregate(Sum('quantity'))['quantity__sum'] or 0
+            total_refund = item.product.bill_items.filter(bill__bill_type='refund').aggregate(Sum('quantity'))['quantity__sum'] or 0
+            warehouse_net = max(0, total_sales - total_refund)
+        else:
+            already_refunded = 0
+            warehouse_net = item.quantity
+
+        remaining_refundable = max(0, item.quantity - already_refunded)
+        max_refundable = min(remaining_refundable, warehouse_net)
+
+        items_data.append({
+            'product_id': item.product_id,
+            'product_name': item.product_name,
+            'purchased_quantity': item.quantity,
+            'already_refunded': already_refunded,
+            'remaining_refundable': remaining_refundable,
+            'max_refundable': max_refundable,
+            'price': float(item.price),
+            'condition': item.get_condition_display(),
+        })
+
+    return JsonResponse({
+        'found': True,
+        'bill_id': bill.id,
+        'bill_number': bill.bill_number or str(bill.id),
+        'created_at': timezone.localtime(bill.created_at).strftime('%Y-%m-%d %H:%M'),
+        'client_name': bill.client.name,
+        'client_phone': bill.client.phone,
+        'client_network': bill.client.network_name or '',
+        'total_amount': float(bill.total_amount),
         'items': items_data,
     })
 
@@ -408,8 +526,9 @@ def create_bill_view(request):
 
     can_create_sales_bill = user.is_superuser or (sales_perm == 'all' and bills_perm == 'all')
     can_create_services_bill = user.is_superuser or (services_perm == 'all' and bills_perm == 'all')
+    can_create_refund_bill = user.is_superuser or (sales_perm == 'all') or (services_perm == 'all') or (bills_perm == 'all')
 
-    if not can_create_sales_bill and not can_create_services_bill:
+    if not can_create_sales_bill and not can_create_services_bill and not can_create_refund_bill:
         messages.error(request, 'ليس لديك صلاحية لإنشاء الفواتير.')
         return redirect('portal')
 
@@ -424,33 +543,36 @@ def create_bill_view(request):
             messages.error(request, 'ليس لديك صلاحية لإنشاء فواتير الخدمات أو أن قسم الخدمات مقفل.')
             return redirect('portal')
 
-        if bill_type == 'refund' and not can_create_sales_bill:
-            messages.error(request, 'ليس لديك صلاحية لإنشاء فواتير المرتجع أو أن قسم المنتجات مقفل.')
+        if bill_type == 'refund' and not can_create_refund_bill:
+            messages.error(request, 'ليس لديك صلاحية لإنشاء فواتير المرتجع.')
             return redirect('portal')
 
-        client_name = request.POST.get('client_name', '').strip()
-        client_phone = request.POST.get('client_phone', '').strip()
-        network_name = request.POST.get('network_name', '').strip()
+        client = None
+        if bill_type != 'refund':
+            client_name = request.POST.get('client_name', '').strip()
+            client_phone = request.POST.get('client_phone', '').strip()
+            network_name = request.POST.get('network_name', '').strip()
 
-        if not client_name or not client_phone:
-            messages.error(request, 'يرجى إدخال اسم العميل ورقم هاتفه.')
-            return redirect(request.META.get('HTTP_REFERER', '/portal/?tab=' + ('bills' if bill_type == 'refund' else bill_type)))
+            if not client_name or not client_phone:
+                messages.error(request, 'يرجى إدخال اسم العميل ورقم هاتفه.')
+                return redirect(request.META.get('HTTP_REFERER', f'/portal/?tab={bill_type}'))
 
         with transaction.atomic():
-            # Get or create client
-            client, created = Client.objects.get_or_create(
-                phone=client_phone,
-                defaults={
-                    'name': client_name,
-                    'network_name': network_name
-                }
-            )
-            if not created:
-                if client_name:
-                    client.name = client_name
-                if network_name:
-                    client.network_name = network_name
-                client.save()
+            if bill_type != 'refund':
+                # Get or create client for sales / services
+                client, created = Client.objects.get_or_create(
+                    phone=client_phone,
+                    defaults={
+                        'name': client_name,
+                        'network_name': network_name
+                    }
+                )
+                if not created:
+                    if client_name:
+                        client.name = client_name
+                    if network_name:
+                        client.network_name = network_name
+                    client.save()
 
             if bill_type == 'services':
                 service_description = request.POST.get('service_description', '').strip()
@@ -493,9 +615,23 @@ def create_bill_view(request):
 
             elif bill_type == 'refund':
                 # Refund bill
+                orig_number = request.POST.get('original_bill_number', '').strip().lstrip('#').strip()
                 product_id = request.POST.get('refund_product_id') or request.POST.get('product_id')
                 quantity_str = request.POST.get('refund_quantity') or request.POST.get('quantity', '1')
                 refund_reason = request.POST.get('refund_reason', '').strip()
+
+                if not orig_number:
+                    messages.error(request, 'يرجى إدخال رقم فاتورة الشراء الأصلية للتحقق والمطابقة.')
+                    return redirect('/portal/?tab=bills')
+
+                q_orig = Q(bill_type='sales') & (Q(bill_number=orig_number) | Q(bill_number__iexact=orig_number))
+                if orig_number.isdigit():
+                    q_orig |= (Q(bill_type='sales') & Q(id=int(orig_number)))
+
+                original_bill = Bill.objects.filter(q_orig).select_related('client').prefetch_related('items__product').first()
+                if not original_bill:
+                    messages.error(request, f'رقم فاتورة الشراء "{orig_number}" غير موجود أو أنها ليست فاتورة مبيعات مؤكدة.')
+                    return redirect('/portal/?tab=bills')
 
                 if not product_id:
                     messages.error(request, 'يرجى اختيار المنتج المرتجع.')
@@ -506,6 +642,15 @@ def create_bill_view(request):
                     messages.error(request, 'المنتج المحدد غير موجود.')
                     return redirect('/portal/?tab=bills')
 
+                # Verify product was in original bill
+                orig_item = original_bill.items.filter(product=product).first()
+                if not orig_item:
+                    messages.error(
+                        request,
+                        f'المنتج "{product.name}" لم يتم شراؤه في فاتورة المبيعات رقم #{original_bill.bill_number or original_bill.id}.'
+                    )
+                    return redirect('/portal/?tab=bills')
+
                 try:
                     quantity = int(quantity_str)
                     if quantity <= 0:
@@ -513,22 +658,57 @@ def create_bill_view(request):
                 except ValueError:
                     quantity = 1
 
-                refund_amount = Decimal(product.price) * Decimal(quantity)
+                # Calculate already refunded quantity for this product from this specific original bill
+                already_refunded = BillItem.objects.filter(
+                    bill__original_bill=original_bill,
+                    bill__bill_type='refund',
+                    product=product
+                ).aggregate(Sum('quantity'))['quantity__sum'] or 0
+
+                remaining_from_bill = orig_item.quantity - already_refunded
+                if remaining_from_bill <= 0:
+                    messages.error(
+                        request,
+                        f'تم استرجاع كامل الكمية المشتراة من المنتج "{product.name}" ({orig_item.quantity} قطع) في هذه الفاتورة سابقاً.'
+                    )
+                    return redirect('/portal/?tab=bills')
+
+                if quantity > remaining_from_bill:
+                    messages.error(
+                        request,
+                        f'الكمية المراد استرجاعها ({quantity} قطع) أكبر من الكمية المتبقية القابلة للإرجاع من هذه الفاتورة ({remaining_from_bill} قطع).'
+                    )
+                    return redirect('/portal/?tab=bills')
+
+                # Store-wide net sold check
+                total_sales_sold = product.bill_items.filter(bill__bill_type='sales').aggregate(Sum('quantity'))['quantity__sum'] or 0
+                total_refunded = product.bill_items.filter(bill__bill_type='refund').aggregate(Sum('quantity'))['quantity__sum'] or 0
+                current_net_sold = max(0, total_sales_sold - total_refunded)
+                if quantity > current_net_sold:
+                    messages.error(
+                        request,
+                        f'لا يمكن إرجاع ({quantity}) قطع لأن إجمالي المبيعات المتبقية في المخزن لهذا المنتج ({current_net_sold}) قطع فقط.'
+                    )
+                    return redirect('/portal/?tab=bills')
+
+                item_price = orig_item.price
+                refund_amount = Decimal(item_price) * Decimal(quantity)
 
                 bill = Bill.objects.create(
-                    client=client,
+                    client=original_bill.client,
                     created_by=user,
                     bill_type='refund',
+                    original_bill=original_bill,
                     total_amount=refund_amount,
-                    notes=f"فاتورة مرتجع: {refund_reason or 'استرجاع بضاعة'}",
+                    notes=f"فاتورة مرتجع لفاتورة الشراء #{original_bill.bill_number or original_bill.id}: {refund_reason or 'استرجاع بضاعة'}",
                 )
 
                 BillItem.objects.create(
                     bill=bill,
                     product=product,
                     product_name=f"[مرتجع] {product.name}",
-                    price=product.price,
-                    condition=product.condition,
+                    price=item_price,
+                    condition=orig_item.condition,
                     quantity=quantity,
                 )
 
@@ -539,8 +719,8 @@ def create_bill_view(request):
                     action_type='refund',
                     user=user,
                     user_name=user.full_name,
-                    changes=f"فاتورة مرتجع #{bill.id}: تم استرجاع {quantity} قطعة من العميل '{client.name}' إلى المخزن (المتوفر حالياً: {product.available_count} قطعة | المبلغ المسترد: {product.price * quantity} ر.ي)",
-                    reason=refund_reason or "استرجاع منتج من العميل",
+                    changes=f"فاتورة مرتجع #{bill.bill_number or bill.id} تابعة لفاتورة الشراء #{original_bill.bill_number or original_bill.id}: تم استرجاع {quantity} قطعة من العميل '{original_bill.client.name}' إلى المخزن (المتوفر حالياً: {product.available_count} قطعة | المبلغ المسترد: {refund_amount} ر.ي)",
+                    reason=refund_reason or f"استرجاع بضاعة من فاتورة #{original_bill.bill_number or original_bill.id}",
                 )
 
             else:
@@ -595,9 +775,9 @@ def create_bill_view(request):
             bill.calculate_total()
 
         if bill_type == 'refund':
-            messages.success(request, f'تم إنشاء فاتورة المرتجع رقم #{bill.id} وإعادة {quantity} قطعة للمخزن بنجاح.')
+            messages.success(request, f'تم إنشاء فاتورة المرتجع رقم #{bill.bill_number or bill.id} والمطابقة مع الفاتورة #{original_bill.bill_number or original_bill.id} وإعادة {quantity} قطعة للمخزن بنجاح.')
         else:
-            messages.success(request, f'تم إنشاء الفاتورة رقم #{bill.id} للعميل "{client.name}" بنجاح.')
+            messages.success(request, f'تم إنشاء الفاتورة رقم #{bill.bill_number or bill.id} للعميل "{client.name}" بنجاح.')
         return redirect('/portal/?tab=bills')
 
     return redirect('portal')
